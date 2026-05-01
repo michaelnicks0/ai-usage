@@ -216,7 +216,7 @@ def render_json(providers, show_model=False):
         miss_pct = round(d["input"] / total_in * 100, 1) if total_in > 0 else 0
         entry = {
             "balance": d["balance"],
-            "period_spend": d["spent"],
+            "period_spend": round(d["spent"], 2) if d["spent"] is not None else None,
             "tokens_in_hit": d["cached"],
             "tokens_in_hit_percentage": hit_pct,
             "tokens_in_miss": d["input"],
