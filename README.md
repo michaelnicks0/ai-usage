@@ -1,4 +1,4 @@
-# ai-providers-usage-tool
+# ai-usage-tool
 
 Cross-provider balance + token usage — one command.
 
