@@ -88,11 +88,13 @@ def _api_get(url, api_key, timeout=10):
 
 
 def _cookie_get(url, cookie_string, timeout=10):
-    """GET with Cookie header. Returns (status, body_dict)."""
+    """GET with Cookie header and browser-like User-Agent."""
     return _http_get(url, {
         "Cookie": cookie_string,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
+        "Accept": "application/json, text/plain, */*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Origin": "https://console.x.ai",
+        "Referer": "https://console.x.ai/",
     }, timeout)
 
 
@@ -145,8 +147,8 @@ def _extract_console_cookie(db_path, domain="console.x.ai"):
         # but prefer cookies where value is plaintext (not starting with 'v10'/'v11')
         cur.execute(
             "SELECT name, value, encrypted_value FROM cookies "
-            "WHERE host_key LIKE ?",
-            (f"%{domain}%",)
+            "WHERE host_key LIKE ? OR host_key LIKE ?",
+            (f"%{domain}%", "%.x.ai")
         )
         rows = cur.fetchall()
         conn.close()
@@ -161,17 +163,27 @@ def _extract_console_cookie(db_path, domain="console.x.ai"):
 
 
 def _extract_firefox_cookie(db_path, domain="console.x.ai"):
-    """Extract session cookies from Firefox cookies.sqlite."""
+    """Extract session cookies from Firefox cookies.sqlite.
+    Copies to temp first to handle WAL locks across WSL boundary."""
+    import shutil
+    import tempfile
     try:
-        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        tmp = tempfile.NamedTemporaryFile(suffix=".sqlite", delete=False)
+        tmp.close()
+        shutil.copy2(db_path, tmp.name)
+        conn = sqlite3.connect(tmp.name)
         cur = conn.cursor()
+        # Search for console.x.ai AND .x.ai (auth cookies are on parent domain)
         cur.execute(
-            "SELECT name, value FROM moz_cookies WHERE host LIKE ?",
-            (f"%{domain}%",)
+            "SELECT name, host, value FROM moz_cookies "
+            "WHERE host LIKE ? OR host LIKE ? OR host LIKE ?",
+            (f"%{domain}%", "%.x.ai", "x.ai")
         )
         rows = cur.fetchall()
         conn.close()
-        return [(name, value) for name, value in rows]
+        os.unlink(tmp.name)
+        # Prefer console.x.ai specific cookies, then .x.ai auth cookies
+        return [(name, value) for name, host, value in rows]
     except Exception:
         return []
 
@@ -220,6 +232,13 @@ def check_xai(api_key):
             result["balance"] = body
             result["method"] = "browser-cookie"
             return result
+        elif status == 403:
+            # Cloudflare blocks automated requests even with valid cookies
+            result["error"] = ("Browser cookies found but Cloudflare blocks automated access. "
+                             "Open console.x.ai in your browser to check balance.")
+            result["method"] = "cloudflare-blocked"
+        else:
+            result["error"] = f"Console API returned HTTP {status}"
 
     # Method 2: Manual XAI_CONSOLE_TOKEN env var
     token = os.environ.get("XAI_CONSOLE_TOKEN", "")
@@ -347,7 +366,10 @@ def display_xai(result, verbose=False):
     elif result.get("api_valid"):
         print(f"  Status:   ✅ API key valid")
         print(f"  Credits:  Check browser → {result['dashboard']}")
-        print(f"  Tip:      Login to console.x.ai in Chrome/Firefox for balance")
+        if result.get("method") == "cloudflare-blocked":
+            print(f"  Note:     Browser cookies found but Cloudflare blocks automated access")
+        else:
+            print(f"  Tip:      Login to console.x.ai in Chrome/Firefox for balance")
     elif result.get("error"):
         print(f"  Status:   ❌ {result['error']}")
         print(f"  Credits:  → {result['dashboard']}")
@@ -463,22 +485,32 @@ def main():
     if "XAI_CONSOLE_TOKEN" in env_file and "XAI_CONSOLE_TOKEN" not in os.environ:
         os.environ["XAI_CONSOLE_TOKEN"] = env_file["XAI_CONSOLE_TOKEN"]
 
-    # Detect WSL — add Windows Chrome paths
+    # Detect WSL — add Windows Chrome and Firefox paths
     if os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop"):
         import glob as _glob
         for users_dir in _glob.glob("/mnt/c/Users/*"):
             user = os.path.basename(users_dir)
             if user in ("Public", "Default", "All Users"):
                 continue
-            chrome_data = f"/mnt/c/Users/{user}/AppData/Local/Google/Chrome/User Data"
-            if os.path.isdir(chrome_data):
-                for profile in ("Default", "Profile 1", "Profile 2"):
-                    net_cookies = f"{chrome_data}/{profile}/Network/Cookies"
-                    old_cookies = f"{chrome_data}/{profile}/Cookies"
-                    if os.path.isfile(net_cookies):
-                        _COOKIE_PATHS.append(("Chrome-Win", net_cookies))
-                    elif os.path.isfile(old_cookies):
-                        _COOKIE_PATHS.append(("Chrome-Win", old_cookies))
+
+            # Chrome / Edge
+            for browser, local_dir, cookie_file in [
+                ("Chrome-Win", f"/mnt/c/Users/{user}/AppData/Local/Google/Chrome/User Data", "Network/Cookies"),
+                ("Edge-Win",   f"/mnt/c/Users/{user}/AppData/Local/Microsoft/Edge/User Data", "Network/Cookies"),
+            ]:
+                if os.path.isdir(local_dir):
+                    for profile in ("Default", "Profile 1", "Profile 2"):
+                        path = f"{local_dir}/{profile}/{cookie_file}"
+                        if os.path.isfile(path):
+                            _COOKIE_PATHS.append((browser, path))
+
+            # Firefox
+            ff_profiles = f"/mnt/c/Users/{user}/AppData/Roaming/Mozilla/Firefox/Profiles"
+            if os.path.isdir(ff_profiles):
+                for d in _glob.glob(f"{ff_profiles}/*"):
+                    path = os.path.join(d, "cookies.sqlite")
+                    if os.path.isfile(path):
+                        _COOKIE_PATHS.append(("Firefox-Win", path))
 
     results = {}
     if provider in ("xai", "all"):
