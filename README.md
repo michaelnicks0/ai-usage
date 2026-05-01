@@ -4,19 +4,21 @@ Cross-provider balance + token usage — one command.
 
 ```
 $ ./get-data
-                         DeepSeek                xAI                 Vast.ai
-────────────────────────────────────────────────────────────────────────────────────
-Account Balance                    $7.46                $25.00                 $4.01
-Tokens In                      4,542,147               435,709                     —
-Tokens In (Cached)            80,816,768               315,968                     —
-Tokens Out                       303,615                 2,454                     —
-Tokens Total                  85,662,530               754,131                     —
+                       DeepSeek                xAI                 Vast.ai
+────────────────────────────────────────────────────────────────────────────────────────
+Account Balance                    $6.19                $25.00                 $4.01
+Period Spend                       $3.81                 $0.60                $20.99
+Tokens In (Cache Hit)        109,174,912               315,968                     —
+Tokens In (Cache Miss)         7,123,680               435,709                     —
+Tokens Out                       357,649                 2,454                     —
+Tokens Total                 116,656,241               754,131                     —
 ```
 
 ## Usage
 
 ```bash
 ./get-data                          # all providers
+./get-data help                     # same as --help
 ./get-data --provider xai           # single provider
 ./get-data -p deepseek,xai          # two providers
 ./get-data --json                   # JSON output
@@ -27,34 +29,30 @@ Tokens Total                  85,662,530               754,131                  
 ### JSON output
 
 ```json
-$ ./get-data --json -p deepseek,xai
+$ ./get-data --json -p deepseek
 {
   "deepseek": {
-    "balance": 7.19,
-    "tokens_in": 5104219,
-    "tokens_in_cached": 85533056,
-    "tokens_out": 312431,
-    "tokens_total": 90849706
-  },
-  "xai": {
-    "balance": 25.0,
-    "tokens_in": 435709,
-    "tokens_in_cached": 315968,
-    "tokens_out": 2454,
-    "tokens_total": 754131
+    "balance": 6.19,
+    "period_spend": 3.81,
+    "tokens_in_hit": 109174912,
+    "tokens_in_hit_percentage": 93.9,
+    "tokens_in_miss": 7123680,
+    "tokens_in_miss_percentage": 6.1,
+    "tokens_out": 357649,
+    "tokens_total": 116656241
   }
 }
 ```
 
 ## Providers
 
-| Provider | Balance | Tokens In | Tokens Cached | Tokens Out | Model |
-|----------|---------|-----------|---------------|------------|-------|
-| DeepSeek | ✅ API | ✅ platform API | ✅ platform API | ✅ platform API | ✅ |
-| xAI | ✅ mgmt API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ |
-| Vast.ai | ✅ API | — | — | — | — |
+| Provider | Balance | Period Spend | Tokens Hit | Tokens Miss | Tokens Out | Model |
+|----------|---------|-------------|------------|-------------|------------|-------|
+| DeepSeek | ✅ API | ✅ calc from tokens | ✅ platform API | ✅ platform API | ✅ platform API | ✅ |
+| xAI | ✅ mgmt API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ |
+| Vast.ai | ✅ API | ✅ charges API | — | — | — | — |
 
-[Architecture diagram →](architecture.html)
+[Architecture diagram →](architecture.html) · [Data architecture →](data-architecture.html)
 
 ## API endpoints
 
@@ -63,8 +61,9 @@ $ ./get-data --json -p deepseek,xai
 | DeepSeek | Balance | `GET api.deepseek.com/user/balance` | API key |
 | DeepSeek | Token usage | `GET platform.deepseek.com/api/v0/usage/amount` | Platform auth token |
 | xAI | Balance | `GET management-api.x.ai/v1/billing/teams/{id}/prepaid/balance` | Management key |
-| xAI | Token usage | `GET management-api.x.ai/v1/billing/teams/{id}/postpaid/invoice/preview` | Management key |
+| xAI | Token + spend | `GET management-api.x.ai/v1/billing/teams/{id}/postpaid/invoice/preview` | Management key |
 | Vast.ai | Balance | `GET console.vast.ai/api/v0/users/current/` | API key |
+| Vast.ai | Spend | `GET cloud.vast.ai/api/v0/charges/` (current month) | API key |
 
 ## Setup
 
