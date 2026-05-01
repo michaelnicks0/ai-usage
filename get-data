@@ -142,6 +142,8 @@ def get_vastai():
 
 # ── display ──────────────────────────────────────────────────────────────
 
+PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
+
 def fmt_amt(n):
     if n is None:
         return "     —"
@@ -153,12 +155,48 @@ def fmt_tok(n):
     return f"{n:>9,}"
 
 
-def render(show_model=False):
+def _select(providers, keys):
+    """Return (names, data_list) for the requested provider keys."""
     ds  = get_deepseek()
     xai = get_xai()
     va  = get_vastai()
+    lookup = {"deepseek": ds, "xai": xai, "vastai": va}
+    names = [PROVIDER_NAMES[k] for k in keys]
+    data  = [lookup[k] for k in keys]
+    return names, data
 
-    # Build rows
+
+def render_json(providers, show_model=False):
+    names, data = _select(providers, ["deepseek", "xai", "vastai"])
+    out = {}
+    for name, d in zip(names, data):
+        entry = {
+            "balance": d["balance"],
+            "input": d["input"],
+            "cached_input": d["cached"],
+            "output": d["output"],
+        }
+        if show_model:
+            entry["model"] = d["model"] or None
+        out[name.lower()] = entry
+    print(json.dumps(out, indent=2))
+
+
+def render_table(providers, show_model=False):
+    names, data = _select(providers, ["deepseek", "xai", "vastai"])
+    keys = [n.lower() for n in names]
+
+    # filter to requested providers
+    filtered_names = []
+    filtered_data = []
+    for n, d in zip(names, data):
+        if n.lower().split()[0] in providers:  # "Vast.ai" -> "vastai"
+            filtered_names.append(n)
+            filtered_data.append(d)
+
+    if not filtered_names:
+        return
+
     rows = [
         ("Balance",   lambda d: fmt_amt(d["balance"])),
         ("Input",     lambda d: fmt_tok(d["input"])),
@@ -168,23 +206,21 @@ def render(show_model=False):
     if show_model:
         rows.append(("Model", lambda d: d["model"] or "—"))
 
-    providers = [ds, xai, va]
-    dw = 20  # data column width
-
-    # Compute column widths from data
+    dw = 20
     label_w = max(len(r[0]) for r in rows)
-    data = [[fn(p) for p in providers] for _, fn in rows]
+    row_data = [[fn(d) for d in filtered_data] for _, fn in rows]
 
-    # Header
-    header_names = ["DeepSeek", "xAI", "Vast.ai"]
-    print(f"{'':{label_w}}  " + "  ".join(n.rjust(dw) for n in header_names))
-    print(f"{'─'*label_w}──" + "──".join("─"*dw for _ in header_names))
+    print(f"{'':{label_w}}  " + "  ".join(n.rjust(dw) for n in filtered_names))
+    print(f"{'─'*label_w}──" + "──".join("─"*dw for _ in filtered_names))
 
-    for (label, _), vals in zip(rows, data):
+    for (label, _), vals in zip(rows, row_data):
         line = "  ".join(v.rjust(dw) for v in vals)
         print(f"{label:<{label_w}}  {line}")
 
     print()
+
+
+ALL_PROVIDERS = ["deepseek", "xai", "vastai"]
 
 
 # ── cli ──────────────────────────────────────────────────────────────────
@@ -192,5 +228,19 @@ def render(show_model=False):
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Cross-provider balance + token usage")
     p.add_argument("--model", "-m", action="store_true", help="Show model breakdown")
+    p.add_argument("--json", "-j", action="store_true", help="Output as JSON")
+    p.add_argument("--provider", "-p", default=",".join(ALL_PROVIDERS),
+                   help=f"Comma-separated providers: {','.join(ALL_PROVIDERS)}")
     args = p.parse_args()
-    render(show_model=args.model)
+
+    providers = [s.strip().lower() for s in args.provider.split(",") if s.strip()]
+    # validate
+    for prov in providers:
+        if prov not in ALL_PROVIDERS:
+            print(f"Unknown provider: {prov}. Choices: {','.join(ALL_PROVIDERS)}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.json:
+        render_json(providers, show_model=args.model)
+    else:
+        render_table(providers, show_model=args.model)
