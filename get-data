@@ -2,19 +2,19 @@
 """Normalized cross-provider balance + token usage view.
 
 Default:  balance, tokens, spend
---model:  adds model column
+-m:       per-model token breakdown
 """
 
 import sys, json, os, argparse
+from collections import OrderedDict
 from datetime import datetime
 from urllib.request import Request, urlopen
 from urllib.parse import quote
 from urllib.error import URLError
 
-# ── credentials (auto-resolve from env or config files) ──────────────────
+# ── credentials ──────────────────────────────────────────────────────────
 
 def _read_env_file(path):
-    """Parse KEY=value from a .env-style file."""
     if not os.path.exists(path):
         return {}
     d = {}
@@ -37,7 +37,6 @@ _vast_file_key = open(_vast_file).read().strip() if os.path.exists(_vast_file) e
 VASTAI_KEY    = (os.environ.get("VASTAI_API_KEY", _hermes_env.get("VASTAI_API_KEY", ""))
                  or _vast_file_key)
 
-# DeepSeek pricing per 1M tokens (deepseek-v4-pro, 75% promo)
 DS_PRICE_CACHE_HIT  = 0.003625
 DS_PRICE_CACHE_MISS = 0.435
 DS_PRICE_OUTPUT     = 0.87
@@ -49,14 +48,17 @@ def get(url, headers=None, timeout=10):
         return json.loads(r.read())
 
 
+def _m():
+    return {"input": 0, "cached": 0, "output": 0}
+
+
 # ── DeepSeek ─────────────────────────────────────────────────────────────
 
 def get_deepseek():
     data = {"balance": None, "input": 0, "cached": 0, "output": 0,
-            "spent": None, "model": ""}
+            "spent": None, "models": OrderedDict()}
     now = datetime.now()
 
-    # balance
     if DEEPSEEK_KEY:
         try:
             r = get("https://api.deepseek.com/user/balance",
@@ -67,7 +69,6 @@ def get_deepseek():
         except Exception:
             pass
 
-    # usage (internal platform API)
     if DEEPSEEK_AUTH:
         try:
             r = get(
@@ -75,20 +76,19 @@ def get_deepseek():
                 f"?month={now.month}&year={now.year}",
                 {"Authorization": f"Bearer {DEEPSEEK_AUTH}",
                  "x-app-version": "20240425.0"})
-            total = r["data"]["biz_data"]["total"]
-            for m in total:
+            for m in r["data"]["biz_data"]["total"]:
+                name = m["model"]
+                md = _m()
                 for u in m["usage"]:
                     amt = int(u["amount"])
-                    if amt == 0:
-                        continue
                     t = u["type"]
                     if t == "PROMPT_CACHE_MISS_TOKEN":
-                        data["input"] += amt
+                        data["input"] += amt; md["input"] += amt
                     elif t == "PROMPT_CACHE_HIT_TOKEN":
-                        data["cached"] += amt
+                        data["cached"] += amt; md["cached"] += amt
                     elif t == "RESPONSE_TOKEN":
-                        data["output"] += amt
-                    data["model"] = m["model"]
+                        data["output"] += amt; md["output"] += amt
+                data["models"][name] = md
             data["spent"] = (
                 data["input"] / 1_000_000 * DS_PRICE_CACHE_MISS +
                 data["cached"] / 1_000_000 * DS_PRICE_CACHE_HIT +
@@ -104,35 +104,33 @@ def get_deepseek():
 
 def get_xai():
     data = {"balance": None, "input": 0, "cached": 0, "output": 0,
-            "spent": None, "model": ""}
+            "spent": None, "models": OrderedDict()}
     if not (XAI_MGMT_KEY and XAI_TEAM_ID):
         return data
 
     headers = {"Authorization": f"Bearer {XAI_MGMT_KEY}"}
     base = f"https://management-api.x.ai/v1/billing/teams/{XAI_TEAM_ID}"
 
-    # balance
     try:
         r = get(f"{base}/prepaid/balance", headers)
-        total = r.get("total", {}).get("val", "0")
-        data["balance"] = abs(float(total)) / 100
+        data["balance"] = abs(float(r.get("total", {}).get("val", "0"))) / 100
     except Exception:
         pass
 
-    # tokens + spend (invoice preview)
     try:
         r = get(f"{base}/postpaid/invoice/preview", headers)
         inv = r.get("coreInvoice", {})
         for line in inv.get("lines", []):
+            name = line.get("description", "unknown")
             ut = line.get("unitType", "")
             nu = int(line.get("numUnits", "0"))
+            md = data["models"].setdefault(name, _m())
             if "Cached" in ut:
-                data["cached"] += nu
+                data["cached"] += nu; md["cached"] += nu
             elif "Prompt" in ut:
-                data["input"] += nu
+                data["input"] += nu; md["input"] += nu
             elif "Completion" in ut:
-                data["output"] += nu
-            data["model"] = line.get("description", "")
+                data["output"] += nu; md["output"] += nu
         data["spent"] = float(inv.get("totalWithCorr", {}).get("val", "0")) / 100
     except Exception:
         pass
@@ -144,7 +142,7 @@ def get_xai():
 
 def get_vastai():
     data = {"balance": None, "input": 0, "cached": 0, "output": 0,
-            "spent": None, "model": ""}
+            "spent": None, "models": OrderedDict()}
     if not VASTAI_KEY:
         return data
     try:
@@ -154,7 +152,6 @@ def get_vastai():
     except Exception:
         pass
 
-    # sum current month's charges
     try:
         now = datetime.now()
         month_start = int(datetime(now.year, now.month, 1).timestamp())
@@ -167,9 +164,7 @@ def get_vastai():
         url = (f"https://cloud.vast.ai/api/v0/charges/?"
                f"select_filters={quote(filters)}&latest_first=true&limit=50")
         charges = get(url, {"Authorization": f"Bearer {VASTAI_KEY}"})
-        spent = 0.0
-        for r in charges.get("results", []):
-            spent += float(r.get("amount", 0))
+        spent = sum(float(r.get("amount", 0)) for r in charges.get("results", []))
         if spent > 0:
             data["spent"] = spent
     except Exception:
@@ -183,55 +178,63 @@ def get_vastai():
 PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
 
 def fmt_amt(n):
-    if n is None:
-        return "     —"
+    if n is None: return "     —"
     return f"${n:,.2f}"
 
 def fmt_tok(n):
-    if n == 0:
-        return "        —"
+    if n == 0: return "        —"
     return f"{n:>9,}"
 
-def _select(providers, keys):
+
+def _select(providers):
     ds  = get_deepseek()
     xai = get_xai()
     va  = get_vastai()
-    lookup = {"deepseek": ds, "xai": xai, "vastai": va}
-    names = [PROVIDER_NAMES[k] for k in keys]
-    data  = [lookup[k] for k in keys]
-    return names, data
+    return [PROVIDER_NAMES[k] for k in ["deepseek", "xai", "vastai"]], [ds, xai, va]
+
+
+def _token_pcts(d):
+    total_in = d["cached"] + d["input"]
+    hit = round(d["cached"] / total_in * 100, 1) if total_in > 0 else 0
+    miss = round(d["input"] / total_in * 100, 1) if total_in > 0 else 0
+    return hit, miss
+
+
+def _model_entry(d):
+    hit, miss = _token_pcts(d)
+    return {
+        "tokens_in_hit": d["cached"],
+        "tokens_in_hit_percentage": hit,
+        "tokens_in_miss": d["input"],
+        "tokens_in_miss_percentage": miss,
+        "tokens_out": d["output"],
+        "tokens_total": d["cached"] + d["input"] + d["output"],
+    }
 
 
 def render_json(providers, show_model=False):
-    names, data = _select(providers, ["deepseek", "xai", "vastai"])
+    names, data = _select(providers)
     key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
-    lookup = {"deepseek": data[0], "xai": data[1], "vastai": data[2]}
     out = {}
     for k in ["deepseek", "xai", "vastai"]:
         if k not in providers:
             continue
-        d = lookup[k]
-        total_in = d["input"] + d["cached"]
-        hit_pct = round(d["cached"] / total_in * 100, 1) if total_in > 0 else 0
-        miss_pct = round(d["input"] / total_in * 100, 1) if total_in > 0 else 0
-        entry = {
-            "balance": round(d["balance"], 2) if d["balance"] is not None else None,
-            "period_spend": round(d["spent"], 2) if d["spent"] is not None else None,
-            "tokens_in_hit": d["cached"],
-            "tokens_in_hit_percentage": hit_pct,
-            "tokens_in_miss": d["input"],
-            "tokens_in_miss_percentage": miss_pct,
-            "tokens_out": d["output"],
-            "tokens_total": total_in + d["output"],
-        }
-        if show_model:
-            entry["model"] = d["model"] or None
+        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2]}[k]
+        entry = _model_entry(d)
+        entry["balance"] = round(d["balance"], 2) if d["balance"] is not None else None
+        entry["period_spend"] = round(d["spent"], 2) if d["spent"] is not None else None
+
+        if show_model and d["models"]:
+            entry["models"] = OrderedDict()
+            for mname, md in d["models"].items():
+                entry["models"][mname] = _model_entry(md)
+
         out[key_map[k].lower()] = entry
     print(json.dumps(out, indent=2))
 
 
 def render_table(providers, show_model=False):
-    names, data = _select(providers, ["deepseek", "xai", "vastai"])
+    names, data = _select(providers)
     key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
 
     filtered_names = []
@@ -244,29 +247,72 @@ def render_table(providers, show_model=False):
     if not filtered_names:
         return
 
-    rows = [
-        ("Account Balance",          lambda d: fmt_amt(d["balance"])),
-        ("Period Spend",             lambda d: fmt_amt(d["spent"])),
-        ("Tokens In (Cache Hit)",    lambda d: fmt_tok(d["cached"])),
-        ("Tokens In (Cache Miss)",   lambda d: fmt_tok(d["input"])),
-        ("Tokens Out",               lambda d: fmt_tok(d["output"])),
-        ("Tokens Total",             lambda d: fmt_tok(d["input"] + d["cached"] + d["output"])),
+    token_labels = [
+        "Tokens In (Cache Hit)",
+        "Tokens In (Cache Miss)",
+        "Tokens Out",
+        "Tokens Total",
     ]
-    if show_model:
-        rows.append(("Model", lambda d: d["model"] or "—"))
+
+    total_rows = [
+        ("Account Balance", lambda d: fmt_amt(d["balance"])),
+        ("Period Spend",    lambda d: fmt_amt(d["spent"])),
+        (token_labels[0],   lambda d: fmt_tok(d["cached"])),
+        (token_labels[1],   lambda d: fmt_tok(d["input"])),
+        (token_labels[2],   lambda d: fmt_tok(d["output"])),
+        (token_labels[3],   lambda d: fmt_tok(d["cached"] + d["input"] + d["output"])),
+    ]
 
     dw = 20
-    label_w = max(len(r[0]) for r in rows)
-    row_data = [[fn(d) for d in filtered_data] for _, fn in rows]
+    label_w = max(len(r[0]) for r in total_rows)
+    if show_model:
+        for d in filtered_data:
+            for mname in d["models"]:
+                label_w = max(label_w, len(mname) + 2)
 
+    # ── print totals ──
     print(f"{'':{label_w}}  " + "  ".join(n.center(dw) for n in filtered_names))
     print(f"{'─'*label_w}──" + "──".join("─"*dw for _ in filtered_names))
-
-    for (label, _), vals in zip(rows, row_data):
+    for label, fn in total_rows:
+        vals = [fn(d) for d in filtered_data]
         line = "  ".join(v.rjust(dw) for v in vals)
         print(f"{label:<{label_w}}  {line}")
 
+    if not show_model:
+        print()
+        return
+
     print()
+
+    # ── per-model sections ──
+    provider_models = [list(d["models"].keys()) for d in filtered_data]
+    max_models = max((len(m) for m in provider_models), default=0)
+
+    model_fn = [
+        lambda d: fmt_tok(d["cached"]),
+        lambda d: fmt_tok(d["input"]),
+        lambda d: fmt_tok(d["output"]),
+        lambda d: fmt_tok(d["cached"] + d["input"] + d["output"]),
+    ]
+
+    for idx in range(max_models):
+        model_names = []
+        model_data_for_row = []
+        for pi in range(len(filtered_data)):
+            if idx < len(provider_models[pi]):
+                model_names.append(f"[{provider_models[pi][idx]}]")
+                model_data_for_row.append(filtered_data[pi]["models"][provider_models[pi][idx]])
+            else:
+                model_names.append("")
+                model_data_for_row.append(_m())
+
+        print(f"{'':{label_w}}  " + "  ".join(n.center(dw) for n in model_names))
+
+        for li in range(4):
+            vals = [model_fn[li](d) for d in model_data_for_row]
+            line = "  ".join(v.rjust(dw) for v in vals)
+            print(f"{token_labels[li]:<{label_w}}  {line}")
+        print()
 
 
 ALL_PROVIDERS = ["deepseek", "xai", "vastai"]
@@ -279,7 +325,7 @@ if __name__ == "__main__":
         sys.argv[1] = "--help"
 
     p = argparse.ArgumentParser(description="Cross-provider balance + token usage")
-    p.add_argument("--model", "-m", action="store_true", help="Show model breakdown")
+    p.add_argument("--model", "-m", action="store_true", help="Per-model token breakdown")
     p.add_argument("--json", "-j", action="store_true", help="Output as JSON")
     p.add_argument("--provider", "-p", default=",".join(ALL_PROVIDERS),
                    help=f"Comma-separated providers: {','.join(ALL_PROVIDERS)}")
