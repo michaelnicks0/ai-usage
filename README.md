@@ -4,43 +4,74 @@ Cross-provider balance + token usage — one command.
 
 ```
 $ ./get-data
-                       DeepSeek                   xAI               Vast.ai
-───────────────────────────────────────────────────────────────────────────
-Balance                   $7.81                $25.00                 $4.01
-Input                 3,857,226               435,709                     —
-Cached in            72,020,480               315,968                     —
-Output                  287,317                 2,454                     —
+                         DeepSeek                xAI                 Vast.ai
+────────────────────────────────────────────────────────────────────────────────────
+Account Balance                    $7.46                $25.00                 $4.01
+Tokens In                      4,542,147               435,709                     —
+Tokens In (Cached)            80,816,768               315,968                     —
+Tokens Out                       303,615                 2,454                     —
+Tokens Total                  85,662,530               754,131                     —
 ```
 
-## Quick start
+## Usage
 
 ```bash
-# Add keys to ~/.hermes/.env (or export as env vars):
-DEEPSEEK_API_KEY=sk-...
-DEEPSEEK_AUTH_TOKEN=...       # from platform.deepseek.com network tab
-XAI_MANAGEMENT_KEY=xai-token-...
-XAI_TEAM_ID=551b7c87-...
-VASTAI_API_KEY=...            # or auto-read from ~/.config/vastai/vast_api_key
+./get-data                          # all providers
+./get-data --provider xai           # single provider
+./get-data -p deepseek,xai          # two providers
+./get-data --json                   # JSON output
+./get-data --json -p vastai         # JSON, single provider
+./get-data --model                  # show model names
+```
 
-# Run it
-./get-data
-./get-data --model          # show model names
+### JSON output
+
+```json
+$ ./get-data --json -p deepseek,xai
+{
+  "deepseek": {
+    "balance": 7.19,
+    "tokens_in": 5104219,
+    "tokens_in_cached": 85533056,
+    "tokens_out": 312431,
+    "tokens_total": 90849706
+  },
+  "xai": {
+    "balance": 25.0,
+    "tokens_in": 435709,
+    "tokens_in_cached": 315968,
+    "tokens_out": 2454,
+    "tokens_total": 754131
+  }
+}
 ```
 
 ## Providers
 
-| Provider  | Balance | Input tokens | Cached input | Output tokens | Model |
-|-----------|---------|-------------|-------------|--------------|-------|
-| DeepSeek  | ✅ API  | ✅ platform API | ✅ platform API | ✅ platform API | ✅ |
-| xAI       | ✅ mgmt API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ |
-| Vast.ai   | ✅ API  | — | — | — | — |
+| Provider | Balance | Tokens In | Tokens Cached | Tokens Out | Model |
+|----------|---------|-----------|---------------|------------|-------|
+| DeepSeek | ✅ API | ✅ platform API | ✅ platform API | ✅ platform API | ✅ |
+| xAI | ✅ mgmt API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ |
+| Vast.ai | ✅ API | — | — | — | — |
 
 ## API endpoints
 
-| Provider | Endpoint | Auth |
-|----------|----------|------|
-| DeepSeek balance | `GET api.deepseek.com/user/balance` | API key |
-| DeepSeek usage | `GET platform.deepseek.com/api/v0/usage/amount` | Platform auth token |
-| xAI balance | `GET management-api.x.ai/v1/billing/teams/{id}/prepaid/balance` | Management key |
-| xAI tokens | `GET management-api.x.ai/v1/billing/teams/{id}/postpaid/invoice/preview` | Management key |
-| Vast.ai | `GET console.vast.ai/api/v0/users/current/` | API key |
+| Provider | Data | Endpoint | Auth |
+|----------|------|----------|------|
+| DeepSeek | Balance | `GET api.deepseek.com/user/balance` | API key |
+| DeepSeek | Token usage | `GET platform.deepseek.com/api/v0/usage/amount` | Platform auth token |
+| xAI | Balance | `GET management-api.x.ai/v1/billing/teams/{id}/prepaid/balance` | Management key |
+| xAI | Token usage | `GET management-api.x.ai/v1/billing/teams/{id}/postpaid/invoice/preview` | Management key |
+| Vast.ai | Balance | `GET console.vast.ai/api/v0/users/current/` | API key |
+
+## Setup
+
+Add to `~/.hermes/.env`:
+
+```bash
+DEEPSEEK_API_KEY=sk-...            # from platform.deepseek.com/api_keys
+DEEPSEEK_AUTH_TOKEN=...            # from platform.deepseek.com Network tab
+XAI_MANAGEMENT_KEY=xai-token-...   # from console.x.ai/team/default/management-keys
+XAI_TEAM_ID=...                    # UUID from management keys page
+VASTAI_API_KEY=...                 # from cloud.vast.ai/manage-keys
+```

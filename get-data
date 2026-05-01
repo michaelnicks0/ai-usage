@@ -168,17 +168,23 @@ def _select(providers, keys):
 
 def render_json(providers, show_model=False):
     names, data = _select(providers, ["deepseek", "xai", "vastai"])
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
+    lookup = {"deepseek": data[0], "xai": data[1], "vastai": data[2]}
     out = {}
-    for name, d in zip(names, data):
+    for k in ["deepseek", "xai", "vastai"]:
+        if k not in providers:
+            continue
+        d = lookup[k]
         entry = {
             "balance": d["balance"],
-            "input": d["input"],
-            "cached_input": d["cached"],
-            "output": d["output"],
+            "tokens_in": d["input"],
+            "tokens_in_cached": d["cached"],
+            "tokens_out": d["output"],
+            "tokens_total": d["input"] + d["cached"] + d["output"],
         }
         if show_model:
             entry["model"] = d["model"] or None
-        out[name.lower()] = entry
+        out[key_map[k].lower()] = entry
     print(json.dumps(out, indent=2))
 
 
