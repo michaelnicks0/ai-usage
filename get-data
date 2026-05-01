@@ -320,16 +320,66 @@ ALL_PROVIDERS = ["deepseek", "xai", "vastai"]
 
 # ── cli ──────────────────────────────────────────────────────────────────
 
+HELP_TEXT = """\
+ai-usage-tool — cross-provider balance + token usage.
+
+Fetch normalized account balance, period spend, and token breakdowns
+from DeepSeek, xAI, and Vast.ai.  Reads credentials from ~/.hermes/.env.
+
+Usage:
+  ./get-data                          all providers (default)
+  ./get-data -p xai                   single provider
+  ./get-data -p deepseek,xai          multiple providers
+  ./get-data -m                       per-model token breakdown
+  ./get-data -j                       JSON output
+  ./get-data -j -m -p deepseek        JSON with per-model models key
+  ./get-data help                     this text
+
+Options:
+  -p, --provider DEEPSEEK,XAI,VASTAI  comma-separated (default: all three)
+  -m, --model                         add per-model token rows below totals
+  -j, --json                          machine-readable JSON output
+  -h, --help                          this text
+
+Output fields (table):
+  Account Balance          credit remaining (USD)
+  Period Spend             cost this billing cycle (USD)
+  Tokens In (Cache Hit)    cached prompt tokens
+  Tokens In (Cache Miss)   uncached prompt tokens
+  Tokens Out               completion tokens
+  Tokens Total             sum of all token types
+
+Output fields (JSON):
+  balance, period_spend, tokens_in_hit, tokens_in_hit_percentage,
+  tokens_in_miss, tokens_in_miss_percentage, tokens_out, tokens_total
+  With -m: adds "models" key with per-model breakdown.
+
+Credentials (from ~/.hermes/.env):
+  DEEPSEEK_API_KEY       standard API key
+  DEEPSEEK_AUTH_TOKEN    platform session token (expires, see README)
+  XAI_MANAGEMENT_KEY     xAI management API key
+  XAI_TEAM_ID            xAI team UUID
+  VASTAI_API_KEY         Vast.ai API key (or ~/.config/vastai/vast_api_key)\
+"""
+
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "help":
-        sys.argv[1] = "--help"
+        print(HELP_TEXT)
+        sys.exit(0)
 
-    p = argparse.ArgumentParser(description="Cross-provider balance + token usage")
-    p.add_argument("--model", "-m", action="store_true", help="Per-model token breakdown")
-    p.add_argument("--json", "-j", action="store_true", help="Output as JSON")
-    p.add_argument("--provider", "-p", default=",".join(ALL_PROVIDERS),
-                   help=f"Comma-separated providers: {','.join(ALL_PROVIDERS)}")
+    p = argparse.ArgumentParser(
+        description="Cross-provider balance + token usage.",
+        usage="%(prog)s [-p PROVIDERS] [-m] [-j]",
+        add_help=False)
+    p.add_argument("--model", "-m", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--json", "-j", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--provider", "-p", default=",".join(ALL_PROVIDERS), help=argparse.SUPPRESS)
+    p.add_argument("--help", "-h", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
+
+    if args.help:
+        print(HELP_TEXT)
+        sys.exit(0)
 
     providers = [s.strip().lower() for s in args.provider.split(",") if s.strip()]
     for prov in providers:
