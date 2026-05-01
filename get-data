@@ -28,7 +28,7 @@ def _read_env_file(path):
 _hermes_env = _read_env_file(os.path.expanduser("~/.hermes/.env"))
 
 DEEPSEEK_KEY  = os.environ.get("DEEPSEEK_API_KEY", _hermes_env.get("DEEPSEEK_API_KEY", ""))
-DEEPSEEK_AUTH = os.environ.get("DEEPSEEK_AUTH_TOKEN", "")  # platform auth (set once)
+DEEPSEEK_AUTH = os.environ.get("DEEPSEEK_AUTH_TOKEN", _hermes_env.get("DEEPSEEK_AUTH_TOKEN", ""))
 XAI_MGMT_KEY  = os.environ.get("XAI_MANAGEMENT_KEY", _hermes_env.get("XAI_MANAGEMENT_KEY", ""))
 XAI_TEAM_ID   = os.environ.get("XAI_TEAM_ID", _hermes_env.get("XAI_TEAM_ID", ""))
 _vast_file    = os.path.expanduser("~/.config/vastai/vast_api_key")
