@@ -1,0 +1,288 @@
+#!/usr/bin/env python3
+"""
+aiwatch — check credit balance and usage across AI vendors.
+
+Usage:
+  aiwatch              Show all providers
+  aiwatch xai          xAI only
+  aiwatch deepseek     DeepSeek only
+  aiwatch vastai       Vast.ai only
+  aiwatch --json       Machine-readable JSON output
+  aiwatch --verbose    Detailed output
+
+API keys read from environment:
+  XAI_API_KEY
+  DEEPSEEK_API_KEY
+  VASTAI_API_KEY
+"""
+
+import datetime
+import json
+import os
+import sys
+import urllib.request
+import urllib.error
+
+
+# ─── helpers ─────────────────────────────────────────────────────────────────
+
+def _api_get(url, api_key, timeout=10):
+    """GET request with Bearer auth. Returns (status, body_dict)."""
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {api_key}")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            body = json.loads(r.read().decode())
+            return r.status, body
+    except urllib.error.HTTPError as e:
+        return e.code, {"error": f"HTTP {e.code}"}
+    except urllib.error.URLError as e:
+        return 0, {"error": str(e.reason)}
+    except Exception as e:
+        return 0, {"error": str(e)}
+
+
+def _fmt_balance(currency, amount):
+    """Format a balance string. Handles CNY and USD."""
+    symbol = {"CNY": "¥", "USD": "$"}.get(currency, currency + " ")
+    try:
+        return f"{symbol}{float(amount):,.2f}"
+    except (ValueError, TypeError):
+        return f"{symbol}{amount}"
+
+
+# ─── providers ───────────────────────────────────────────────────────────────
+
+def check_xai(api_key):
+    """xAI — verify key, link to dashboard. No public usage/balance API."""
+    result = {
+        "provider": "xAI",
+        "dashboard": "https://console.x.ai/team/default/billing",
+        "models": "https://console.x.ai/team/default/usage",
+        "api_valid": False,
+        "balance": None,
+        "charges": None,
+        "error": None,
+    }
+
+    if not api_key:
+        result["error"] = "XAI_API_KEY not set"
+        return result
+
+    status, body = _api_get("https://api.x.ai/v1/models", api_key)
+    if status == 200:
+        result["api_valid"] = True
+        models = [m.get("id", "unknown") for m in body.get("data", [])]
+        result["models_available"] = models
+    elif status == 401:
+        result["error"] = "Invalid API key (401)"
+    else:
+        result["error"] = body.get("error", f"HTTP {status}")
+
+    return result
+
+
+def check_deepseek(api_key):
+    """DeepSeek — check balance via /user/balance."""
+    result = {
+        "provider": "DeepSeek",
+        "dashboard": "https://platform.deepseek.com/",
+        "api_valid": False,
+        "balance": None,
+        "charges": None,
+        "error": None,
+    }
+
+    if not api_key:
+        result["error"] = "DEEPSEEK_API_KEY not set"
+        return result
+
+    status, body = _api_get("https://api.deepseek.com/user/balance", api_key)
+    if status == 200:
+        result["api_valid"] = True
+        result["balance"] = body
+    elif status == 401:
+        result["error"] = "Invalid API key (401)"
+    else:
+        result["error"] = body.get("error", f"HTTP {status}")
+
+    return result
+
+
+def check_vastai(api_key):
+    """Vast.ai — check credits via billing endpoints."""
+    result = {
+        "provider": "Vast.ai",
+        "dashboard": "https://cloud.vast.ai/billing/",
+        "api_valid": False,
+        "balance": None,
+        "charges": None,
+        "error": None,
+    }
+
+    if not api_key:
+        result["error"] = "VASTAI_API_KEY not set"
+        return result
+
+    base = "https://console.vast.ai/api/v0"
+
+    # Get user info (includes credit balance)
+    status, user = _api_get(f"{base}/users/current/", api_key)
+    if status == 200:
+        result["api_valid"] = True
+        result["balance"] = user
+    elif status in (401, 403):
+        result["error"] = "Invalid API key"
+        return result
+    else:
+        result["error"] = user.get("error", f"HTTP {status}")
+        return result
+
+    # Fetch recent charges via invoices
+    end = datetime.date.today()
+    start = end - datetime.timedelta(days=30)
+    status, invoices = _api_get(
+        f"{base}/invoices?q=created_at>={start.isoformat()}", api_key
+    )
+    if status == 200 and isinstance(invoices, dict):
+        inv_list = invoices.get("invoices", invoices.get("data", []))
+        if isinstance(inv_list, list):
+            result["charges"] = inv_list[:5]
+
+    return result
+
+
+# ─── display ─────────────────────────────────────────────────────────────────
+
+def _box(text):
+    """Draw a simple box header."""
+    n = len(text) + 2
+    return f"┌{'─' * n}┐\n│ {text} │\n└{'─' * n}┘"
+
+
+def display_xai(result, verbose=False):
+    print(_box("xAI"))
+    if result["error"]:
+        print(f"  Status:   ❌ {result['error']}")
+    elif result["api_valid"]:
+        print(f"  Status:   ✅ API key valid")
+        if verbose and result.get("models_available"):
+            models = ", ".join(result["models_available"])
+            print(f"  Models:   {models}")
+    print(f"  Credits:  Dashboard only → {result['dashboard']}")
+    if verbose:
+        print(f"  Usage:    {result.get('models', result['dashboard'])}")
+    print()
+
+
+def display_deepseek(result, verbose=False):
+    print(_box("DeepSeek"))
+    if result["error"]:
+        print(f"  Status:   ❌ {result['error']}")
+    elif result["balance"]:
+        print(f"  Status:   ✅ Connected")
+        b = result["balance"]
+        available = "✅ Available" if b.get("is_available") else "⚠️  Low"
+        print(f"  Balance:  {available}")
+        for info in b.get("balance_infos", []):
+            ccy = info.get("currency", "???")
+            total = _fmt_balance(ccy, info.get("total_balance", "0"))
+            granted = _fmt_balance(ccy, info.get("granted_balance", "0"))
+            topped = _fmt_balance(ccy, info.get("topped_up_balance", "0"))
+            print(f"            {total}  (granted: {granted}, topped-up: {topped})")
+    if verbose:
+        print(f"  Usage:    → {result['dashboard']}")
+        print(f"  Models:   deepseek-v4-pro, deepseek-v4-flash")
+    elif result.get("error"):
+        print(f"  Usage:    → {result['dashboard']}")
+    print()
+
+
+def display_vastai(result, verbose=False):
+    print(_box("Vast.ai"))
+    if result["error"]:
+        print(f"  Status:   ❌ {result['error']}")
+    elif result["api_valid"]:
+        print(f"  Status:   ✅ Connected")
+        b = result["balance"] or {}
+        credit = b.get("credit", b.get("balance", b.get("total", "?")))
+        if credit and credit != "?":
+            try:
+                print(f"  Credits:  ${float(credit):,.2f}")
+            except (ValueError, TypeError):
+                print(f"  Credits:  {credit}")
+
+        charges = result.get("charges") or []
+        if charges:
+            print(f"  Recent charges ({len(charges)}):")
+            for ch in charges[:5]:
+                amt = ch.get("amount", ch.get("debit", ch.get("total", "?")))
+                desc = ch.get("description", ch.get("type", ch.get("reason", "?")))
+                ts = ch.get("timestamp", ch.get("date", ch.get("created", "")))
+                if ts:
+                    ts = ts[:10]  # date part only
+                try:
+                    amt_str = f"${float(amt):,.2f}"
+                except (ValueError, TypeError):
+                    amt_str = str(amt)
+                print(f"    {ts:10s} {amt_str:>10s}  {desc}")
+    if verbose:
+        print(f"  Billing:  → {result['dashboard']}")
+    print()
+
+
+def display_json(results):
+    """Machine-readable JSON output."""
+    print(json.dumps(results, indent=2))
+
+
+# ─── main ────────────────────────────────────────────────────────────────────
+
+def main():
+    args = sys.argv[1:]
+    providers = {"xai", "deepseek", "vastai", "all"}
+    json_mode = "--json" in args
+    verbose = "--verbose" in args or "-v" in args
+
+    # Clean flags from args to find provider filter
+    provider = "all"
+    for a in args:
+        if a in providers:
+            provider = a
+            break
+
+    keys = {
+        "xai": os.environ.get("XAI_API_KEY", ""),
+        "deepseek": os.environ.get("DEEPSEEK_API_KEY", ""),
+        "vastai": os.environ.get("VASTAI_API_KEY", ""),
+    }
+
+    results = {}
+    if provider in ("xai", "all"):
+        results["xai"] = check_xai(keys["xai"])
+    if provider in ("deepseek", "all"):
+        results["deepseek"] = check_deepseek(keys["deepseek"])
+    if provider in ("vastai", "all"):
+        results["vastai"] = check_vastai(keys["vastai"])
+
+    if json_mode:
+        display_json(results)
+    else:
+        if "xai" in results:
+            display_xai(results["xai"], verbose)
+        if "deepseek" in results:
+            display_deepseek(results["deepseek"], verbose)
+        if "vastai" in results:
+            display_vastai(results["vastai"], verbose)
+
+        total = len(results)
+        ok = sum(1 for r in results.values() if r.get("api_valid"))
+        err = sum(1 for r in results.values() if r.get("error"))
+        missing = sum(1 for r in results.values()
+                      if r.get("error") and "not set" in r["error"])
+        print(f"─── {ok}/{total} providers OK, {err} errors ({missing} missing keys)")
+
+
+if __name__ == "__main__":
+    main()
