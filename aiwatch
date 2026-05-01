@@ -31,6 +31,29 @@ import urllib.error
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
 
+def _load_env_file(path=None):
+    """Load KEY=VALUE pairs from a .env file. Returns dict."""
+    if path is None:
+        # Look next to the script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(script_dir, ".api-keys.env")
+
+    if not os.path.isfile(path):
+        return {}
+
+    env = {}
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, _, value = line.partition("=")
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                env[key] = value
+    return env
+
 def _http_get(url, headers=None, timeout=10):
     """GET request. Returns (status, body_dict_or_string)."""
     req = urllib.request.Request(url)
@@ -429,11 +452,16 @@ def main():
             provider = a
             break
 
+    # Load keys: .api-keys.env takes priority over environment variables
+    env_file = _load_env_file()
     keys = {
-        "xai": os.environ.get("XAI_API_KEY", ""),
-        "deepseek": os.environ.get("DEEPSEEK_API_KEY", ""),
-        "vastai": os.environ.get("VASTAI_API_KEY", ""),
+        "xai": env_file.get("XAI_API_KEY", os.environ.get("XAI_API_KEY", "")),
+        "deepseek": env_file.get("DEEPSEEK_API_KEY", os.environ.get("DEEPSEEK_API_KEY", "")),
+        "vastai": env_file.get("VASTAI_API_KEY", os.environ.get("VASTAI_API_KEY", "")),
     }
+    # xAI console token can also come from the env file
+    if "XAI_CONSOLE_TOKEN" in env_file and "XAI_CONSOLE_TOKEN" not in os.environ:
+        os.environ["XAI_CONSOLE_TOKEN"] = env_file["XAI_CONSOLE_TOKEN"]
 
     # Detect WSL — add Windows Chrome paths
     if os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop"):

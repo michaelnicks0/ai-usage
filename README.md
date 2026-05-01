@@ -2,6 +2,14 @@
 
 Check credit balance across your AI vendors from the terminal.
 
+## Quick start
+
+```bash
+cp .api-keys.env.example .api-keys.env
+# edit .api-keys.env with your keys
+./aiwatch
+```
+
 ## Supported providers
 
 | Provider  | Credit Balance | How |
@@ -17,30 +25,29 @@ balance. You must be logged into `https://console.x.ai` in your browser.
 If no browser session is found, it falls back to verifying your API key and
 showing a dashboard link.
 
+## Configuration
+
+Store API keys in `.api-keys.env` next to the script:
+
+```bash
+XAI_API_KEY=xai-...
+DEEPSEEK_API_KEY=sk-...
+VASTAI_API_KEY=...
+# Optional: manual xAI console session token (if browser cookie fails)
+# XAI_CONSOLE_TOKEN=
+```
+
+Keys from `.api-keys.env` take priority over environment variables.
+
 ## Usage
 
 ```bash
-# Set API keys
-export XAI_API_KEY="xai-..."
-export DEEPSEEK_API_KEY="sk-..."
-export VASTAI_API_KEY="..."
-
-# Optional: manual xAI console session token
-export XAI_CONSOLE_TOKEN="session=abc123..."
-
-# Check all providers
-./aiwatch
-
-# Check specific provider
-./aiwatch deepseek
-./aiwatch xai
-./aiwatch vastai
-
-# Machine-readable output
-./aiwatch --json
-
-# Verbose mode
-./aiwatch --verbose
+./aiwatch               # All providers
+./aiwatch deepseek      # DeepSeek only
+./aiwatch xai           # xAI only
+./aiwatch vastai        # Vast.ai only
+./aiwatch --json        # Machine-readable output
+./aiwatch --verbose     # Detailed output
 ```
 
 ## How xAI cookie extraction works
