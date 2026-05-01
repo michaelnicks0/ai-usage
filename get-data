@@ -8,6 +8,7 @@ Default:  balance, tokens, spend
 import sys, json, os, argparse
 from datetime import datetime
 from urllib.request import Request, urlopen
+from urllib.parse import quote
 from urllib.error import URLError
 
 # ── credentials (auto-resolve from env or config files) ──────────────────
@@ -155,17 +156,22 @@ def get_vastai():
     except Exception:
         pass
 
-    # sum current month's invoices for spend
+    # sum current month's charges
     try:
         now = datetime.now()
-        invoices = get("https://console.vast.ai/api/v0/invoices/",
-                       {"Authorization": f"Bearer {VASTAI_KEY}"})
+        month_start = int(datetime(now.year, now.month, 1).timestamp())
+        if now.month == 12:
+            month_end = int(datetime(now.year + 1, 1, 1).timestamp())
+        else:
+            month_end = int(datetime(now.year, now.month + 1, 1).timestamp())
+
+        filters = json.dumps({"day": {"gte": month_start, "lte": month_end}}, separators=(",", ":"))
+        url = (f"https://cloud.vast.ai/api/v0/charges/?"
+               f"select_filters={quote(filters)}&latest_first=true&limit=50")
+        charges = get(url, {"Authorization": f"Bearer {VASTAI_KEY}"})
         spent = 0.0
-        for inv in invoices:
-            ts = inv.get("when", 0)
-            inv_date = datetime.fromtimestamp(ts)
-            if inv_date.year == now.year and inv_date.month == now.month:
-                spent += abs(int(inv.get("amount_cents", 0))) / 100
+        for r in charges.get("results", []):
+            spent += float(r.get("amount", 0))
         if spent > 0:
             data["spent"] = spent
     except Exception:
@@ -211,7 +217,7 @@ def render_json(providers, show_model=False):
         d = lookup[k]
         entry = {
             "balance": d["balance"],
-            "spent_this_cycle": d["spent"],
+            "period_spend": d["spent"],
             "tokens_in": d["input"],
             "tokens_in_cached": d["cached"],
             "tokens_out": d["output"],
