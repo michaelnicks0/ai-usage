@@ -54,6 +54,8 @@ $ ./get-data --json -p deepseek,xai
 | xAI | ✅ mgmt API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ |
 | Vast.ai | ✅ API | — | — | — | — |
 
+[Architecture diagram →](architecture.html)
+
 ## API endpoints
 
 | Provider | Data | Endpoint | Auth |
