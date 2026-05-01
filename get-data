@@ -246,7 +246,7 @@ def render_table(providers, show_model=False):
 
     rows = [
         ("Account Balance",          lambda d: fmt_amt(d["balance"])),
-        ("Month / Period Spend",     lambda d: fmt_amt(d["spent"])),
+        ("Period Spend",             lambda d: fmt_amt(d["spent"])),
         ("Tokens In (Cache Hit)",    lambda d: fmt_tok(d["cached"])),
         ("Tokens In (Cache Miss)",   lambda d: fmt_tok(d["input"])),
         ("Tokens Out",               lambda d: fmt_tok(d["output"])),
