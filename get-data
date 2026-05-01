@@ -192,19 +192,7 @@ def fmt_tok(n):
         return "        —"
     return f"{n:>9,}"
 
-def fmt_hit_pct(cached, input_tokens):
-    """Format cache hit count with hit% appended, e.g. '80,816,768 (97%)'"""
-    if cached == 0:
-        return "        —"
-    total = cached + input_tokens
-    if total == 0:
-        return f"{cached:>9,}"
-    pct = cached / total * 100
-    return f"{cached:>9,} ({pct:.0f}%)"
-
-
 def _select(providers, keys):
-    """Return (names, data_list) for the requested provider keys."""
     ds  = get_deepseek()
     xai = get_xai()
     va  = get_vastai()
@@ -225,12 +213,14 @@ def render_json(providers, show_model=False):
         d = lookup[k]
         total_in = d["input"] + d["cached"]
         hit_pct = round(d["cached"] / total_in * 100, 1) if total_in > 0 else 0
+        miss_pct = round(d["input"] / total_in * 100, 1) if total_in > 0 else 0
         entry = {
             "balance": d["balance"],
             "period_spend": d["spent"],
             "tokens_in_hit": d["cached"],
-            "tokens_in_hit_%": hit_pct,
+            "tokens_in_hit_percentage": hit_pct,
             "tokens_in_miss": d["input"],
+            "tokens_in_miss_percentage": miss_pct,
             "tokens_out": d["output"],
             "tokens_total": total_in + d["output"],
         }
@@ -257,7 +247,7 @@ def render_table(providers, show_model=False):
     rows = [
         ("Account Balance",          lambda d: fmt_amt(d["balance"])),
         ("Month / Period Spend",     lambda d: fmt_amt(d["spent"])),
-        ("Tokens In (Cache Hit)",    lambda d: fmt_hit_pct(d["cached"], d["input"])),
+        ("Tokens In (Cache Hit)",    lambda d: fmt_tok(d["cached"])),
         ("Tokens In (Cache Miss)",   lambda d: fmt_tok(d["input"])),
         ("Tokens Out",               lambda d: fmt_tok(d["output"])),
         ("Tokens Total",             lambda d: fmt_tok(d["input"] + d["cached"] + d["output"])),
@@ -265,7 +255,7 @@ def render_table(providers, show_model=False):
     if show_model:
         rows.append(("Model", lambda d: d["model"] or "—"))
 
-    dw = 28
+    dw = 20
     label_w = max(len(r[0]) for r in rows)
     row_data = [[fn(d) for d in filtered_data] for _, fn in rows]
 
