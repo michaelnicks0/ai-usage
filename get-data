@@ -89,7 +89,6 @@ def get_deepseek():
                     elif t == "RESPONSE_TOKEN":
                         data["output"] += amt
                     data["model"] = m["model"]
-            # compute spend from token counts × pricing
             data["spent"] = (
                 data["input"] / 1_000_000 * DS_PRICE_CACHE_MISS +
                 data["cached"] / 1_000_000 * DS_PRICE_CACHE_HIT +
@@ -134,7 +133,6 @@ def get_xai():
             elif "Completion" in ut:
                 data["output"] += nu
             data["model"] = line.get("description", "")
-        # totalWithCorr is in cents
         data["spent"] = float(inv.get("totalWithCorr", {}).get("val", "0")) / 100
     except Exception:
         pass
@@ -194,6 +192,16 @@ def fmt_tok(n):
         return "        —"
     return f"{n:>9,}"
 
+def fmt_hit_pct(cached, input_tokens):
+    """Format cache hit count with hit% appended, e.g. '80,816,768 (97%)'"""
+    if cached == 0:
+        return "        —"
+    total = cached + input_tokens
+    if total == 0:
+        return f"{cached:>9,}"
+    pct = cached / total * 100
+    return f"{cached:>9,} ({pct:.0f}%)"
+
 
 def _select(providers, keys):
     """Return (names, data_list) for the requested provider keys."""
@@ -215,13 +223,16 @@ def render_json(providers, show_model=False):
         if k not in providers:
             continue
         d = lookup[k]
+        total_in = d["input"] + d["cached"]
+        hit_pct = round(d["cached"] / total_in * 100, 1) if total_in > 0 else 0
         entry = {
             "balance": d["balance"],
             "period_spend": d["spent"],
-            "tokens_in": d["input"],
-            "tokens_in_cached": d["cached"],
+            "tokens_in_hit": d["cached"],
+            "tokens_in_hit_%": hit_pct,
+            "tokens_in_miss": d["input"],
             "tokens_out": d["output"],
-            "tokens_total": d["input"] + d["cached"] + d["output"],
+            "tokens_total": total_in + d["output"],
         }
         if show_model:
             entry["model"] = d["model"] or None
@@ -233,7 +244,6 @@ def render_table(providers, show_model=False):
     names, data = _select(providers, ["deepseek", "xai", "vastai"])
     key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
 
-    # filter to requested providers
     filtered_names = []
     filtered_data = []
     for k in ["deepseek", "xai", "vastai"]:
@@ -245,17 +255,17 @@ def render_table(providers, show_model=False):
         return
 
     rows = [
-        ("Account Balance",       lambda d: fmt_amt(d["balance"])),
-        ("Month / Period Spend",  lambda d: fmt_amt(d["spent"])),
-        ("Tokens In",             lambda d: fmt_tok(d["input"])),
-        ("Tokens In (Cached)",    lambda d: fmt_tok(d["cached"])),
-        ("Tokens Out",            lambda d: fmt_tok(d["output"])),
-        ("Tokens Total",          lambda d: fmt_tok(d["input"] + d["cached"] + d["output"])),
+        ("Account Balance",          lambda d: fmt_amt(d["balance"])),
+        ("Month / Period Spend",     lambda d: fmt_amt(d["spent"])),
+        ("Tokens In (Cache Hit)",    lambda d: fmt_hit_pct(d["cached"], d["input"])),
+        ("Tokens In (Cache Miss)",   lambda d: fmt_tok(d["input"])),
+        ("Tokens Out",               lambda d: fmt_tok(d["output"])),
+        ("Tokens Total",             lambda d: fmt_tok(d["input"] + d["cached"] + d["output"])),
     ]
     if show_model:
         rows.append(("Model", lambda d: d["model"] or "—"))
 
-    dw = 20
+    dw = 28
     label_w = max(len(r[0]) for r in rows)
     row_data = [[fn(d) for d in filtered_data] for _, fn in rows]
 
@@ -275,7 +285,6 @@ ALL_PROVIDERS = ["deepseek", "xai", "vastai"]
 # ── cli ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    # "help" subcommand alias
     if len(sys.argv) > 1 and sys.argv[1] == "help":
         sys.argv[1] = "--help"
 
