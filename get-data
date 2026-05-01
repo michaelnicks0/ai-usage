@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Normalized cross-provider balance + token usage view.
 
-Default:  balance, input, cached-input, output
+Default:  balance, tokens, spend
 --model:  adds model column
 """
 
@@ -36,6 +36,11 @@ _vast_file_key = open(_vast_file).read().strip() if os.path.exists(_vast_file) e
 VASTAI_KEY    = (os.environ.get("VASTAI_API_KEY", _hermes_env.get("VASTAI_API_KEY", ""))
                  or _vast_file_key)
 
+# DeepSeek pricing per 1M tokens (deepseek-v4-pro, 75% promo)
+DS_PRICE_CACHE_HIT  = 0.003625
+DS_PRICE_CACHE_MISS = 0.435
+DS_PRICE_OUTPUT     = 0.87
+
 
 def get(url, headers=None, timeout=10):
     req = Request(url, headers=headers or {})
@@ -46,7 +51,8 @@ def get(url, headers=None, timeout=10):
 # ── DeepSeek ─────────────────────────────────────────────────────────────
 
 def get_deepseek():
-    data = {"balance": None, "input": 0, "cached": 0, "output": 0, "model": ""}
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0,
+            "spent": None, "model": ""}
     now = datetime.now()
 
     # balance
@@ -82,6 +88,12 @@ def get_deepseek():
                     elif t == "RESPONSE_TOKEN":
                         data["output"] += amt
                     data["model"] = m["model"]
+            # compute spend from token counts × pricing
+            data["spent"] = (
+                data["input"] / 1_000_000 * DS_PRICE_CACHE_MISS +
+                data["cached"] / 1_000_000 * DS_PRICE_CACHE_HIT +
+                data["output"] / 1_000_000 * DS_PRICE_OUTPUT
+            )
         except Exception:
             pass
 
@@ -91,7 +103,8 @@ def get_deepseek():
 # ── xAI ──────────────────────────────────────────────────────────────────
 
 def get_xai():
-    data = {"balance": None, "input": 0, "cached": 0, "output": 0, "model": ""}
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0,
+            "spent": None, "model": ""}
     if not (XAI_MGMT_KEY and XAI_TEAM_ID):
         return data
 
@@ -106,10 +119,11 @@ def get_xai():
     except Exception:
         pass
 
-    # tokens (invoice preview)
+    # tokens + spend (invoice preview)
     try:
         r = get(f"{base}/postpaid/invoice/preview", headers)
-        for line in r.get("coreInvoice", {}).get("lines", []):
+        inv = r.get("coreInvoice", {})
+        for line in inv.get("lines", []):
             ut = line.get("unitType", "")
             nu = int(line.get("numUnits", "0"))
             if "Cached" in ut:
@@ -119,6 +133,8 @@ def get_xai():
             elif "Completion" in ut:
                 data["output"] += nu
             data["model"] = line.get("description", "")
+        # totalWithCorr is in cents
+        data["spent"] = float(inv.get("totalWithCorr", {}).get("val", "0")) / 100
     except Exception:
         pass
 
@@ -128,7 +144,8 @@ def get_xai():
 # ── Vast.ai ──────────────────────────────────────────────────────────────
 
 def get_vastai():
-    data = {"balance": None, "input": 0, "cached": 0, "output": 0, "model": ""}
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0,
+            "spent": None, "model": ""}
     if not VASTAI_KEY:
         return data
     try:
@@ -137,6 +154,23 @@ def get_vastai():
         data["balance"] = float(r.get("credit", 0))
     except Exception:
         pass
+
+    # sum current month's invoices for spend
+    try:
+        now = datetime.now()
+        invoices = get("https://console.vast.ai/api/v0/invoices/",
+                       {"Authorization": f"Bearer {VASTAI_KEY}"})
+        spent = 0.0
+        for inv in invoices:
+            ts = inv.get("when", 0)
+            inv_date = datetime.fromtimestamp(ts)
+            if inv_date.year == now.year and inv_date.month == now.month:
+                spent += abs(int(inv.get("amount_cents", 0))) / 100
+        if spent > 0:
+            data["spent"] = spent
+    except Exception:
+        pass
+
     return data
 
 
@@ -177,6 +211,7 @@ def render_json(providers, show_model=False):
         d = lookup[k]
         entry = {
             "balance": d["balance"],
+            "spent_this_cycle": d["spent"],
             "tokens_in": d["input"],
             "tokens_in_cached": d["cached"],
             "tokens_out": d["output"],
@@ -204,11 +239,12 @@ def render_table(providers, show_model=False):
         return
 
     rows = [
-        ("Account Balance",     lambda d: fmt_amt(d["balance"])),
-        ("Tokens In",           lambda d: fmt_tok(d["input"])),
-        ("Tokens In (Cached)",  lambda d: fmt_tok(d["cached"])),
-        ("Tokens Out",          lambda d: fmt_tok(d["output"])),
-        ("Tokens Total",        lambda d: fmt_tok(d["input"] + d["cached"] + d["output"])),
+        ("Account Balance",       lambda d: fmt_amt(d["balance"])),
+        ("Month / Period Spend",  lambda d: fmt_amt(d["spent"])),
+        ("Tokens In",             lambda d: fmt_tok(d["input"])),
+        ("Tokens In (Cached)",    lambda d: fmt_tok(d["cached"])),
+        ("Tokens Out",            lambda d: fmt_tok(d["output"])),
+        ("Tokens Total",          lambda d: fmt_tok(d["input"] + d["cached"] + d["output"])),
     ]
     if show_model:
         rows.append(("Model", lambda d: d["model"] or "—"))
@@ -233,6 +269,10 @@ ALL_PROVIDERS = ["deepseek", "xai", "vastai"]
 # ── cli ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # "help" subcommand alias
+    if len(sys.argv) > 1 and sys.argv[1] == "help":
+        sys.argv[1] = "--help"
+
     p = argparse.ArgumentParser(description="Cross-provider balance + token usage")
     p.add_argument("--model", "-m", action="store_true", help="Show model breakdown")
     p.add_argument("--json", "-j", action="store_true", help="Output as JSON")
@@ -241,7 +281,6 @@ if __name__ == "__main__":
     args = p.parse_args()
 
     providers = [s.strip().lower() for s in args.provider.split(",") if s.strip()]
-    # validate
     for prov in providers:
         if prov not in ALL_PROVIDERS:
             print(f"Unknown provider: {prov}. Choices: {','.join(ALL_PROVIDERS)}", file=sys.stderr)
