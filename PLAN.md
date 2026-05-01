@@ -3,23 +3,27 @@
 ## Research Summary
 
 ### xAI (api.x.ai/v1)
-- **Credit balance**: NO public API. Dashboard-only at `https://console.x.ai/team/default/billing`
-- **Usage details**: NO public API for token/model breakdown. Response headers may include rate-limit info
-- **Approach**: Verify API key works via `GET /v1/models`, link to console dashboard. xAI does not expose usage programmatically.
+- **Credit balance**: NO public API endpoint. The OpenAPI spec confirms no billing/balance routes.
+- **Console API**: `console.x.ai/api/team/billing` exists (returns 403 without auth, not 404) but requires browser session cookies, not API keys.
+- **Approach**: 
+  1. Extract session cookie from Chrome/Firefox cookie database (user must be logged into console.x.ai)
+  2. Fall back to `XAI_CONSOLE_TOKEN` env var for manual session token
+  3. If neither works: verify API key and show dashboard link
+- **Auth**: `Authorization: Bearer <api_key>` for API endpoints; Cookie-based for console
 
 ### DeepSeek (api.deepseek.com)
 - **Credit balance**: `GET /user/balance` → `{"is_available": true, "balance_infos": [{"currency": "CNY", "total_balance": "110.00", "granted_balance": "10.00", "topped_up_balance": "100.00"}]}`
-- **Usage details**: No per-model/token breakdown API. Dashboard at `https://platform.deepseek.com/`
 - **Auth**: `Authorization: Bearer <api_key>`
 
 ### Vast.ai (console.vast.ai/api/v0)
-- **Credit balance**: `GET /api/v0/billing/show-charges` (current balance/credits)
-- **Usage/costs**: `/api/v0/billing/show-charges` returns charge history
+- **Credit balance**: `GET /api/v0/users/current/` — returns user info including credit
+- **Invoice history**: `GET /api/v0/invoices`
 - **Auth**: `Authorization: Bearer <api_key>` (from cloud.vast.ai/manage-keys)
 
 ## Architecture
 
 Single Python script (`aiwatch`) — no external dependencies, stdlib only.
+Uses `sqlite3` (stdlib) to read browser cookie databases.
 
 ```
 ~/repos/ai-usage-watcher/
@@ -35,42 +39,25 @@ aiwatch                    # Show all providers
 aiwatch xai                # xAI only
 aiwatch deepseek           # DeepSeek only
 aiwatch vastai             # Vast.ai only
-aiwatch all                # Same as no args
+aiwatch --json             # Machine-readable JSON output
+aiwatch --verbose          # Detailed output
 ```
 
 ## API Keys
 
 Read from environment variables:
-- `XAI_API_KEY`
-- `DEEPSEEK_API_KEY`
-- `VASTAI_API_KEY`
+- `XAI_API_KEY` — for API verification (not credit balance)
+- `DEEPSEEK_API_KEY` — for balance check
+- `VASTAI_API_KEY` — for credit check
+- `XAI_CONSOLE_TOKEN` — optional manual session token for xAI console
 
-## Output Format
+## xAI Cookie Extraction
 
-Tabular display for each provider:
+The tool tries these browser paths:
+- Linux: `~/.config/google-chrome/Default/Network/Cookies`
+- Linux: `~/.config/chromium/Default/Network/Cookies`
+- Linux: `~/.mozilla/firefox/*.default-release/cookies.sqlite`
+- WSL: `/mnt/c/Users/*/AppData/Local/Google/Chrome/User Data/*/Network/Cookies`
+- WSL: `/mnt/c/Users/*/AppData/Local/Google/Chrome/User Data/*/Cookies`
 
-```
-═══ xAI ═══
-  Status: ✅ API key valid (or ❌ missing/invalid)
-  Credits: Dashboard only → https://console.x.ai/team/default/billing
-  Usage:   Not available via API
-
-═══ DeepSeek ═══
-  Status:  ✅ Connected
-  Balance: $110.00 USD (granted: $10.00, topped-up: $100.00)
-  Usage:   Dashboard only → https://platform.deepseek.com/
-
-═══ Vast.ai ═══
-  Status:  ✅ Connected
-  Credits: $42.50
-  Charges: Last 5 charges shown
-```
-
-## Implementation Order
-
-1. Create `aiwatch` script with provider stubs
-2. Implement DeepSeek balance check (simplest API)
-3. Implement Vast.ai credit check
-4. Implement xAI key verification + dashboard link
-5. Add `--json` flag for machine-readable output
-6. Add `--verbose` for detailed output
+User must be logged into `https://console.x.ai` in one of these browsers.

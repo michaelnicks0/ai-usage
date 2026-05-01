@@ -1,24 +1,29 @@
 #!/usr/bin/env python3
 """
-aiwatch — check credit balance and usage across AI vendors.
+aiwatch — check credit balance across AI vendors.
 
 Usage:
   aiwatch              Show all providers
-  aiwatch xai          xAI only
+  aiwatch xai          xAI only (tries browser cookies, then API key)
   aiwatch deepseek     DeepSeek only
   aiwatch vastai       Vast.ai only
   aiwatch --json       Machine-readable JSON output
   aiwatch --verbose    Detailed output
 
 API keys read from environment:
-  XAI_API_KEY
-  DEEPSEEK_API_KEY
-  VASTAI_API_KEY
+  XAI_API_KEY, DEEPSEEK_API_KEY, VASTAI_API_KEY
+
+xAI does not expose credit balance via its public API. This tool tries:
+  1. Browser session cookie (Chrome/Firefox — you must be logged into console.x.ai)
+  2. XAI_CONSOLE_TOKEN env var (manual session token)
+  3. Falls back to dashboard link
 """
 
 import datetime
+import http.cookiejar
 import json
 import os
+import sqlite3
 import sys
 import urllib.request
 import urllib.error
@@ -26,25 +31,50 @@ import urllib.error
 
 # ─── helpers ─────────────────────────────────────────────────────────────────
 
-def _api_get(url, api_key, timeout=10):
-    """GET request with Bearer auth. Returns (status, body_dict)."""
+def _http_get(url, headers=None, timeout=10):
+    """GET request. Returns (status, body_dict_or_string)."""
     req = urllib.request.Request(url)
-    req.add_header("Authorization", f"Bearer {api_key}")
-    req.add_header("Content-Type", "application/json")
+    if headers:
+        for k, v in headers.items():
+            req.add_header(k, v)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            body = json.loads(r.read().decode())
-            return r.status, body
+            raw = r.read().decode()
+            try:
+                return r.status, json.loads(raw)
+            except json.JSONDecodeError:
+                return r.status, raw
     except urllib.error.HTTPError as e:
-        return e.code, {"error": f"HTTP {e.code}"}
+        body = e.read().decode()
+        try:
+            return e.code, json.loads(body)
+        except json.JSONDecodeError:
+            return e.code, body
     except urllib.error.URLError as e:
         return 0, {"error": str(e.reason)}
     except Exception as e:
         return 0, {"error": str(e)}
 
 
+def _api_get(url, api_key, timeout=10):
+    """GET with Bearer auth. Returns (status, body_dict)."""
+    return _http_get(url, {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }, timeout)
+
+
+def _cookie_get(url, cookie_string, timeout=10):
+    """GET with Cookie header. Returns (status, body_dict)."""
+    return _http_get(url, {
+        "Cookie": cookie_string,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }, timeout)
+
+
 def _fmt_balance(currency, amount):
-    """Format a balance string. Handles CNY and USD."""
+    """Format a balance string."""
     symbol = {"CNY": "¥", "USD": "$"}.get(currency, currency + " ")
     try:
         return f"{symbol}{float(amount):,.2f}"
@@ -52,33 +82,154 @@ def _fmt_balance(currency, amount):
         return f"{symbol}{amount}"
 
 
+# ─── browser cookie extraction ───────────────────────────────────────────────
+
+# Common browser cookie DB locations (Linux + WSL Windows paths)
+_COOKIE_PATHS = [
+    # Chrome Linux
+    ("Chrome", os.path.expanduser("~/.config/google-chrome/Default/Cookies")),
+    ("Chrome", os.path.expanduser("~/.config/google-chrome/Default/Network/Cookies")),
+    # Chromium Linux
+    ("Chromium", os.path.expanduser("~/.config/chromium/Default/Cookies")),
+    ("Chromium", os.path.expanduser("~/.config/chromium/Default/Network/Cookies")),
+    # Firefox Linux
+    ("Firefox", os.path.expanduser("~/.mozilla/firefox")),  # dir, find profile
+    # Edge Linux
+    ("Edge", os.path.expanduser("~/.config/microsoft-edge/Default/Cookies")),
+    ("Edge", os.path.expanduser("~/.config/microsoft-edge/Default/Network/Cookies")),
+]
+
+
+def _find_firefox_cookie_db():
+    """Find Firefox cookies.sqlite in profile directories."""
+    base = os.path.expanduser("~/.mozilla/firefox")
+    if not os.path.isdir(base):
+        return None
+    for d in os.listdir(base):
+        if d.endswith(".default-release") or d.endswith(".default"):
+            path = os.path.join(base, d, "cookies.sqlite")
+            if os.path.isfile(path):
+                return path
+    return None
+
+
+def _extract_console_cookie(db_path, domain="console.x.ai"):
+    """Extract session cookies for a domain from a Chromium/Chrome cookie DB."""
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro&nolock=1", uri=True)
+        cur = conn.cursor()
+        # Chrome encrypts some cookies — try to get the encrypted_value, 
+        # but prefer cookies where value is plaintext (not starting with 'v10'/'v11')
+        cur.execute(
+            "SELECT name, value, encrypted_value FROM cookies "
+            "WHERE host_key LIKE ?",
+            (f"%{domain}%",)
+        )
+        rows = cur.fetchall()
+        conn.close()
+
+        cookies = []
+        for name, value, enc in rows:
+            if value and not value.startswith("v1"):  # plaintext cookies
+                cookies.append((name, value))
+        return cookies
+    except Exception:
+        return []
+
+
+def _extract_firefox_cookie(db_path, domain="console.x.ai"):
+    """Extract session cookies from Firefox cookies.sqlite."""
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT name, value FROM moz_cookies WHERE host LIKE ?",
+            (f"%{domain}%",)
+        )
+        rows = cur.fetchall()
+        conn.close()
+        return [(name, value) for name, value in rows]
+    except Exception:
+        return []
+
+
+def _get_browser_cookie():
+    """Try to find a console.x.ai session cookie from any browser. Returns cookie_string or None."""
+    for browser, path in _COOKIE_PATHS:
+        if not os.path.exists(path):
+            continue
+
+        if browser == "Firefox" and os.path.isdir(path):
+            path = _find_firefox_cookie_db()
+            if not path:
+                continue
+
+        if "firefox" in path.lower() or path.endswith(".sqlite"):
+            cookies = _extract_firefox_cookie(path)
+        else:
+            cookies = _extract_console_cookie(path)
+
+        if cookies:
+            return "; ".join(f"{name}={value}" for name, value in cookies)
+
+    return None
+
+
 # ─── providers ───────────────────────────────────────────────────────────────
 
 def check_xai(api_key):
-    """xAI — verify key, link to dashboard. No public usage/balance API."""
+    """xAI — try browser cookies, then manual token, then fallback to link."""
     result = {
         "provider": "xAI",
         "dashboard": "https://console.x.ai/team/default/billing",
-        "models": "https://console.x.ai/team/default/usage",
         "api_valid": False,
         "balance": None,
-        "charges": None,
         "error": None,
+        "method": "none",
     }
 
+    # Method 1: Browser cookie extraction
+    cookie = _get_browser_cookie()
+    if cookie:
+        status, body = _cookie_get("https://console.x.ai/api/team/billing", cookie)
+        if status == 200:
+            result["api_valid"] = True
+            result["balance"] = body
+            result["method"] = "browser-cookie"
+            return result
+
+    # Method 2: Manual XAI_CONSOLE_TOKEN env var
+    token = os.environ.get("XAI_CONSOLE_TOKEN", "")
+    if token:
+        cookie_str = token if "=" in token else f"session={token}"
+        status, body = _cookie_get("https://console.x.ai/api/team/billing", cookie_str)
+        if status == 200:
+            result["api_valid"] = True
+            result["balance"] = body
+            result["method"] = "manual-token"
+            return result
+
+    # Method 3: API key validation only (no balance API available)
     if not api_key:
-        result["error"] = "XAI_API_KEY not set"
+        result["error"] = "XAI_API_KEY not set (and no browser session found)"
         return result
 
     status, body = _api_get("https://api.x.ai/v1/models", api_key)
     if status == 200:
         result["api_valid"] = True
-        models = [m.get("id", "unknown") for m in body.get("data", [])]
-        result["models_available"] = models
+        result["models_available"] = [
+            m.get("id", "unknown") for m in body.get("data", [])
+        ]
     elif status == 401:
-        result["error"] = "Invalid API key (401)"
+        result["error"] = "Invalid API key"
     else:
         result["error"] = body.get("error", f"HTTP {status}")
+
+    if not result.get("balance"):
+        if result.get("api_valid"):
+            result["error"] = "Credit check requires browser login at console.x.ai"
+        elif not result.get("error"):
+            result["error"] = "XAI_API_KEY not set — try setting it or login to console.x.ai"
 
     return result
 
@@ -90,7 +241,6 @@ def check_deepseek(api_key):
         "dashboard": "https://platform.deepseek.com/",
         "api_valid": False,
         "balance": None,
-        "charges": None,
         "error": None,
     }
 
@@ -111,7 +261,7 @@ def check_deepseek(api_key):
 
 
 def check_vastai(api_key):
-    """Vast.ai — check credits via billing endpoints."""
+    """Vast.ai — check credits via /users/current/."""
     result = {
         "provider": "Vast.ai",
         "dashboard": "https://cloud.vast.ai/billing/",
@@ -139,12 +289,8 @@ def check_vastai(api_key):
         result["error"] = user.get("error", f"HTTP {status}")
         return result
 
-    # Fetch recent charges via invoices
-    end = datetime.date.today()
-    start = end - datetime.timedelta(days=30)
-    status, invoices = _api_get(
-        f"{base}/invoices?q=created_at>={start.isoformat()}", api_key
-    )
+    # Fetch recent invoices
+    status, invoices = _api_get(f"{base}/invoices", api_key)
     if status == 200 and isinstance(invoices, dict):
         inv_list = invoices.get("invoices", invoices.get("data", []))
         if isinstance(inv_list, list):
@@ -163,17 +309,49 @@ def _box(text):
 
 def display_xai(result, verbose=False):
     print(_box("xAI"))
-    if result["error"]:
-        print(f"  Status:   ❌ {result['error']}")
-    elif result["api_valid"]:
+    if result.get("balance"):
+        b = result["balance"]
+        method = result.get("method", "?")
+        # Try to find credit/balance fields in the response
+        credit = _find_credit_field(b)
+        if credit is not None:
+            print(f"  Credits:  ${credit:,.2f}")
+        elif verbose:
+            print(f"  Raw:      {json.dumps(b)[:200]}")
+        print(f"  Method:   {method}")
+        if verbose:
+            print(f"  Billing:  → {result['dashboard']}")
+    elif result.get("api_valid"):
         print(f"  Status:   ✅ API key valid")
-        if verbose and result.get("models_available"):
-            models = ", ".join(result["models_available"])
-            print(f"  Models:   {models}")
-    print(f"  Credits:  Dashboard only → {result['dashboard']}")
-    if verbose:
-        print(f"  Usage:    {result.get('models', result['dashboard'])}")
+        print(f"  Credits:  Check browser → {result['dashboard']}")
+        print(f"  Tip:      Login to console.x.ai in Chrome/Firefox for balance")
+    elif result.get("error"):
+        print(f"  Status:   ❌ {result['error']}")
+        print(f"  Credits:  → {result['dashboard']}")
+    if verbose and result.get("models_available"):
+        models = ", ".join(result["models_available"])
+        print(f"  Models:   {models}")
     print()
+
+
+def _find_credit_field(obj, depth=0):
+    """Recursively search for a credit/balance numeric field in a dict."""
+    if depth > 3:
+        return None
+    if isinstance(obj, dict):
+        for key in ("credit", "credits", "balance", "total_credits", "remaining"):
+            if key in obj:
+                try:
+                    return float(obj[key])
+                except (ValueError, TypeError):
+                    pass
+        for v in obj.values():
+            r = _find_credit_field(v, depth + 1)
+            if r is not None:
+                return r
+    elif isinstance(obj, list) and obj:
+        return _find_credit_field(obj[0], depth + 1)
+    return None
 
 
 def display_deepseek(result, verbose=False):
@@ -221,7 +399,7 @@ def display_vastai(result, verbose=False):
                 desc = ch.get("description", ch.get("type", ch.get("reason", "?")))
                 ts = ch.get("timestamp", ch.get("date", ch.get("created", "")))
                 if ts:
-                    ts = ts[:10]  # date part only
+                    ts = ts[:10]
                 try:
                     amt_str = f"${float(amt):,.2f}"
                 except (ValueError, TypeError):
@@ -234,7 +412,7 @@ def display_vastai(result, verbose=False):
 
 def display_json(results):
     """Machine-readable JSON output."""
-    print(json.dumps(results, indent=2))
+    print(json.dumps(results, indent=2, default=str))
 
 
 # ─── main ────────────────────────────────────────────────────────────────────
@@ -245,7 +423,6 @@ def main():
     json_mode = "--json" in args
     verbose = "--verbose" in args or "-v" in args
 
-    # Clean flags from args to find provider filter
     provider = "all"
     for a in args:
         if a in providers:
@@ -257,6 +434,23 @@ def main():
         "deepseek": os.environ.get("DEEPSEEK_API_KEY", ""),
         "vastai": os.environ.get("VASTAI_API_KEY", ""),
     }
+
+    # Detect WSL — add Windows Chrome paths
+    if os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop"):
+        import glob as _glob
+        for users_dir in _glob.glob("/mnt/c/Users/*"):
+            user = os.path.basename(users_dir)
+            if user in ("Public", "Default", "All Users"):
+                continue
+            chrome_data = f"/mnt/c/Users/{user}/AppData/Local/Google/Chrome/User Data"
+            if os.path.isdir(chrome_data):
+                for profile in ("Default", "Profile 1", "Profile 2"):
+                    net_cookies = f"{chrome_data}/{profile}/Network/Cookies"
+                    old_cookies = f"{chrome_data}/{profile}/Cookies"
+                    if os.path.isfile(net_cookies):
+                        _COOKIE_PATHS.append(("Chrome-Win", net_cookies))
+                    elif os.path.isfile(old_cookies):
+                        _COOKIE_PATHS.append(("Chrome-Win", old_cookies))
 
     results = {}
     if provider in ("xai", "all"):
@@ -280,7 +474,7 @@ def main():
         ok = sum(1 for r in results.values() if r.get("api_valid"))
         err = sum(1 for r in results.values() if r.get("error"))
         missing = sum(1 for r in results.values()
-                      if r.get("error") and "not set" in r["error"])
+                      if r.get("error") and "not set" in str(r["error"]))
         print(f"─── {ok}/{total} providers OK, {err} errors ({missing} missing keys)")
 
 
