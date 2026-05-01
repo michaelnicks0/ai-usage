@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""Normalized cross-provider balance + token usage view.
+
+Default:  balance, input, cached-input, output
+--model:  adds model column
+"""
+
+import sys, json, os, argparse
+from datetime import datetime
+from urllib.request import Request, urlopen
+from urllib.error import URLError
+
+# ── credentials (auto-resolve from env or config files) ──────────────────
+
+def _read_env_file(path):
+    """Parse KEY=value from a .env-style file."""
+    if not os.path.exists(path):
+        return {}
+    d = {}
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                d[k.strip()] = v.strip().strip('"').strip("'")
+    return d
+
+_hermes_env = _read_env_file(os.path.expanduser("~/.hermes/.env"))
+
+DEEPSEEK_KEY  = os.environ.get("DEEPSEEK_API_KEY", _hermes_env.get("DEEPSEEK_API_KEY", ""))
+DEEPSEEK_AUTH = os.environ.get("DEEPSEEK_AUTH_TOKEN", "")  # platform auth (set once)
+XAI_MGMT_KEY  = os.environ.get("XAI_MANAGEMENT_KEY", _hermes_env.get("XAI_MANAGEMENT_KEY", ""))
+XAI_TEAM_ID   = os.environ.get("XAI_TEAM_ID", _hermes_env.get("XAI_TEAM_ID", ""))
+_vast_file    = os.path.expanduser("~/.config/vastai/vast_api_key")
+_vast_file_key = open(_vast_file).read().strip() if os.path.exists(_vast_file) else ""
+VASTAI_KEY    = (os.environ.get("VASTAI_API_KEY", _hermes_env.get("VASTAI_API_KEY", ""))
+                 or _vast_file_key)
+
+
+def get(url, headers=None, timeout=10):
+    req = Request(url, headers=headers or {})
+    with urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read())
+
+
+# ── DeepSeek ─────────────────────────────────────────────────────────────
+
+def get_deepseek():
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0, "model": ""}
+    now = datetime.now()
+
+    # balance
+    if DEEPSEEK_KEY:
+        try:
+            r = get("https://api.deepseek.com/user/balance",
+                    {"Authorization": f"Bearer {DEEPSEEK_KEY}"})
+            for b in r.get("balance_infos", []):
+                if b.get("currency") == "USD":
+                    data["balance"] = float(b["total_balance"])
+        except Exception:
+            pass
+
+    # usage (internal platform API)
+    if DEEPSEEK_AUTH:
+        try:
+            r = get(
+                f"https://platform.deepseek.com/api/v0/usage/amount"
+                f"?month={now.month}&year={now.year}",
+                {"Authorization": f"Bearer {DEEPSEEK_AUTH}",
+                 "x-app-version": "20240425.0"})
+            total = r["data"]["biz_data"]["total"]
+            for m in total:
+                for u in m["usage"]:
+                    amt = int(u["amount"])
+                    if amt == 0:
+                        continue
+                    t = u["type"]
+                    if t == "PROMPT_CACHE_MISS_TOKEN":
+                        data["input"] += amt
+                    elif t == "PROMPT_CACHE_HIT_TOKEN":
+                        data["cached"] += amt
+                    elif t == "RESPONSE_TOKEN":
+                        data["output"] += amt
+                    data["model"] = m["model"]
+        except Exception:
+            pass
+
+    return data
+
+
+# ── xAI ──────────────────────────────────────────────────────────────────
+
+def get_xai():
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0, "model": ""}
+    if not (XAI_MGMT_KEY and XAI_TEAM_ID):
+        return data
+
+    headers = {"Authorization": f"Bearer {XAI_MGMT_KEY}"}
+    base = f"https://management-api.x.ai/v1/billing/teams/{XAI_TEAM_ID}"
+
+    # balance
+    try:
+        r = get(f"{base}/prepaid/balance", headers)
+        total = r.get("total", {}).get("val", "0")
+        data["balance"] = abs(float(total)) / 100
+    except Exception:
+        pass
+
+    # tokens (invoice preview)
+    try:
+        r = get(f"{base}/postpaid/invoice/preview", headers)
+        for line in r.get("coreInvoice", {}).get("lines", []):
+            ut = line.get("unitType", "")
+            nu = int(line.get("numUnits", "0"))
+            if "Cached" in ut:
+                data["cached"] += nu
+            elif "Prompt" in ut:
+                data["input"] += nu
+            elif "Completion" in ut:
+                data["output"] += nu
+            data["model"] = line.get("description", "")
+    except Exception:
+        pass
+
+    return data
+
+
+# ── Vast.ai ──────────────────────────────────────────────────────────────
+
+def get_vastai():
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0, "model": ""}
+    if not VASTAI_KEY:
+        return data
+    try:
+        r = get("https://console.vast.ai/api/v0/users/current/",
+                {"Authorization": f"Bearer {VASTAI_KEY}"})
+        data["balance"] = float(r.get("credit", 0))
+    except Exception:
+        pass
+    return data
+
+
+# ── display ──────────────────────────────────────────────────────────────
+
+def fmt_amt(n):
+    if n is None:
+        return "     —"
+    return f"${n:,.2f}"
+
+def fmt_tok(n):
+    if n == 0:
+        return "        —"
+    return f"{n:>9,}"
+
+
+def render(show_model=False):
+    ds  = get_deepseek()
+    xai = get_xai()
+    va  = get_vastai()
+
+    # Build rows
+    rows = [
+        ("Balance",   lambda d: fmt_amt(d["balance"])),
+        ("Input",     lambda d: fmt_tok(d["input"])),
+        ("Cached in", lambda d: fmt_tok(d["cached"])),
+        ("Output",    lambda d: fmt_tok(d["output"])),
+    ]
+    if show_model:
+        rows.append(("Model", lambda d: d["model"] or "—"))
+
+    providers = [ds, xai, va]
+    dw = 20  # data column width
+
+    # Compute column widths from data
+    label_w = max(len(r[0]) for r in rows)
+    data = [[fn(p) for p in providers] for _, fn in rows]
+
+    # Header
+    header_names = ["DeepSeek", "xAI", "Vast.ai"]
+    print(f"{'':{label_w}}  " + "  ".join(n.rjust(dw) for n in header_names))
+    print(f"{'─'*label_w}──" + "──".join("─"*dw for _ in header_names))
+
+    for (label, _), vals in zip(rows, data):
+        line = "  ".join(v.rjust(dw) for v in vals)
+        print(f"{label:<{label_w}}  {line}")
+
+    print()
+
+
+# ── cli ──────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    p = argparse.ArgumentParser(description="Cross-provider balance + token usage")
+    p.add_argument("--model", "-m", action="store_true", help="Show model breakdown")
+    args = p.parse_args()
+    render(show_model=args.model)
