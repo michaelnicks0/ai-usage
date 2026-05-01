@@ -211,7 +211,7 @@ def render_table(providers, show_model=False):
     label_w = max(len(r[0]) for r in rows)
     row_data = [[fn(d) for d in filtered_data] for _, fn in rows]
 
-    print(f"{'':{label_w}}  " + "  ".join(n.rjust(dw) for n in filtered_names))
+    print(f"{'':{label_w}}  " + "  ".join(n.center(dw) for n in filtered_names))
     print(f"{'─'*label_w}──" + "──".join("─"*dw for _ in filtered_names))
 
     for (label, _), vals in zip(rows, row_data):
