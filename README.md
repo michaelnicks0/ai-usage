@@ -6,12 +6,12 @@ Cross-provider balance + token usage — one command.
 $ ./get-data
                        DeepSeek                xAI                 Vast.ai
 ────────────────────────────────────────────────────────────────────────────────────────
-Account Balance                    $6.19                $25.00                 $4.01
-Period Spend                       $3.81                 $0.60                $20.99
-Tokens In (Cache Hit)        109,174,912               315,968                     —
-Tokens In (Cache Miss)         7,123,680               435,709                     —
-Tokens Out                       357,649                 2,454                     —
-Tokens Total                 116,656,241               754,131                     —
+Account Balance                    $6.03                $25.00                 $4.01
+Period Spend                       $3.97                 $0.60                $20.99
+Tokens In (Cache Hit)        118,428,800               315,968                     —
+Tokens In (Cache Miss)         7,388,843               435,709                     —
+Tokens Out                       379,566                 2,454                     —
+Tokens Total                 126,197,209               754,131                     —
 ```
 
 ## Usage
@@ -19,35 +19,61 @@ Tokens Total                 116,656,241               754,131                  
 ```bash
 ./get-data                          # all providers
 ./get-data help                     # same as --help
-./get-data --provider xai           # single provider
+./get-data -p xai                   # single provider
 ./get-data -p deepseek,xai          # two providers
-./get-data --json                   # JSON output
-./get-data --json -p vastai         # JSON, single provider
-./get-data --model                  # show model names
+./get-data -m                       # per-model token breakdown
+./get-data -m -p deepseek,xai       # per-model, filtered
+./get-data -j                       # JSON output
+./get-data -j -m                    # JSON with per-model breakdown
 ```
 
 ### JSON output
 
 ```json
-$ ./get-data --json -p deepseek
+$ ./get-data -j -p deepseek
 {
   "deepseek": {
-    "balance": 6.19,
-    "period_spend": 3.81,
-    "tokens_in_hit": 109174912,
-    "tokens_in_hit_percentage": 93.9,
-    "tokens_in_miss": 7123680,
-    "tokens_in_miss_percentage": 6.1,
-    "tokens_out": 357649,
-    "tokens_total": 116656241
+    "balance": 6.03,
+    "period_spend": 3.97,
+    "tokens_in_hit": 118428800,
+    "tokens_in_hit_percentage": 94.1,
+    "tokens_in_miss": 7388843,
+    "tokens_in_miss_percentage": 5.9,
+    "tokens_out": 379566,
+    "tokens_total": 126197209
+  }
+}
+```
+
+With `-m`, each provider gets a `models` key:
+
+```json
+$ ./get-data -j -m -p deepseek
+{
+  "deepseek": {
+    "balance": 6.03,
+    "period_spend": 3.97,
+    "tokens_in_hit": 118428800,
+    ...
+    "models": {
+      "deepseek-v4-pro": {
+        "tokens_in_hit": 118428800,
+        "tokens_in_hit_percentage": 94.1,
+        "tokens_in_miss": 7388843,
+        "tokens_in_miss_percentage": 5.9,
+        "tokens_out": 379566,
+        "tokens_total": 126197209
+      },
+      "deepseek-v4-flash": { ... }
+    }
   }
 }
 ```
 
 ## Providers
 
-| Provider | Balance | Period Spend | Tokens Hit | Tokens Miss | Tokens Out | Model |
-|----------|---------|-------------|------------|-------------|------------|-------|
+| Provider | Balance | Period Spend | Tokens Hit | Tokens Miss | Tokens Out | Per-model |
+|----------|---------|-------------|------------|-------------|------------|-----------|
 | DeepSeek | ✅ API | ✅ calc from tokens | ✅ platform API | ✅ platform API | ✅ platform API | ✅ |
 | xAI | ✅ mgmt API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ |
 | Vast.ai | ✅ API | ✅ charges API | — | — | — | — |
