@@ -76,3 +76,15 @@ XAI_MANAGEMENT_KEY=xai-token-...   # from console.x.ai/team/default/management-k
 XAI_TEAM_ID=...                    # UUID from management keys page
 VASTAI_API_KEY=...                 # from cloud.vast.ai/manage-keys
 ```
+
+### Credential refresh
+
+Only `DEEPSEEK_AUTH_TOKEN` expires — it's a browser session token, not an API key.
+When token usage data shows `—` for DeepSeek, refresh it:
+
+1. Open https://platform.deepseek.com/usage in Chrome
+2. Press F12 → Network tab → refresh the page
+3. Find any request to `platform.deepseek.com` → copy the `Authorization: Bearer ...` header value
+4. Update `DEEPSEEK_AUTH_TOKEN` in `~/.hermes/.env`
+
+All other credentials are long-lived API keys and never need rotation.
