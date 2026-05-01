@@ -184,24 +184,25 @@ def render_json(providers, show_model=False):
 
 def render_table(providers, show_model=False):
     names, data = _select(providers, ["deepseek", "xai", "vastai"])
-    keys = [n.lower() for n in names]
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
 
     # filter to requested providers
     filtered_names = []
     filtered_data = []
-    for n, d in zip(names, data):
-        if n.lower().split()[0] in providers:  # "Vast.ai" -> "vastai"
-            filtered_names.append(n)
-            filtered_data.append(d)
+    for k in ["deepseek", "xai", "vastai"]:
+        if k in providers:
+            filtered_names.append(key_map[k])
+            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2]}[k])
 
     if not filtered_names:
         return
 
     rows = [
-        ("Balance",   lambda d: fmt_amt(d["balance"])),
-        ("Input",     lambda d: fmt_tok(d["input"])),
-        ("Cached in", lambda d: fmt_tok(d["cached"])),
-        ("Output",    lambda d: fmt_tok(d["output"])),
+        ("Account Balance",     lambda d: fmt_amt(d["balance"])),
+        ("Tokens In",           lambda d: fmt_tok(d["input"])),
+        ("Tokens In (Cached)",  lambda d: fmt_tok(d["cached"])),
+        ("Tokens Out",          lambda d: fmt_tok(d["output"])),
+        ("Tokens Total",        lambda d: fmt_tok(d["input"] + d["cached"] + d["output"])),
     ]
     if show_model:
         rows.append(("Model", lambda d: d["model"] or "—"))
