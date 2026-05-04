@@ -37,6 +37,7 @@ _vast_file_key = open(_vast_file).read().strip() if os.path.exists(_vast_file) e
 VASTAI_KEY    = (os.environ.get("VASTAI_API_KEY", _hermes_env.get("VASTAI_API_KEY", ""))
                  or _vast_file_key)
 EXA_SERVICE_KEY = os.environ.get("EXA_SERVICE_KEY", _hermes_env.get("EXA_SERVICE_KEY", ""))
+EXA_SESSION_TOKEN = os.environ.get("EXA_SESSION_TOKEN", _hermes_env.get("EXA_SESSION_TOKEN", ""))
 
 DS_PRICE_CACHE_HIT  = 0.003625
 DS_PRICE_CACHE_MISS = 0.435
@@ -182,12 +183,25 @@ def get_vastai():
 def get_exa():
     data = {"balance": None, "input": 0, "cached": 0, "output": 0,
             "spent": None, "models": OrderedDict()}
+    if not (EXA_SERVICE_KEY or EXA_SESSION_TOKEN):
+        return data
+
+    # 1. Balance via dashboard session token (optional, same pattern as DeepSeek)
+    if EXA_SESSION_TOKEN:
+        try:
+            r = get("https://dashboard.exa.ai/api/get-orb-balance",
+                    {"Cookie": f"next-auth.session-token={EXA_SESSION_TOKEN}",
+                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/147.0.0.0 Safari/537.36"})
+            data["balance"] = float(r.get("orbCreditsInCents", 0)) / 100
+        except Exception:
+            pass
+
     if not EXA_SERVICE_KEY:
         return data
 
     headers = {"x-api-key": EXA_SERVICE_KEY}
 
-    # 1. Discover API key ID
+    # 2. Discover API key ID
     try:
         keys_resp = get("https://admin-api.exa.ai/team-management/api-keys", headers)
         api_keys = keys_resp.get("apiKeys", [])
@@ -197,7 +211,7 @@ def get_exa():
     except Exception:
         return data
 
-    # 2. Fetch current month's usage
+    # 3. Fetch current month's usage
     try:
         now = datetime.now()
         start = f"{now.year}-{now.month:02d}-01T00:00:00Z"
@@ -404,7 +418,8 @@ Credentials (from ~/.hermes/.env):
   XAI_MANAGEMENT_KEY     xAI management API key
   XAI_TEAM_ID            xAI team UUID
   VASTAI_API_KEY         Vast.ai API key (or ~/.config/vastai/vast_api_key)
-  EXA_SERVICE_KEY        Exa service key (from dashboard.exa.ai)\\
+  EXA_SERVICE_KEY        Exa service key (from dashboard.exa.ai)
+  EXA_SESSION_TOKEN      Exa dashboard session token (expires, see README)\\
 """
 
 if __name__ == "__main__":
