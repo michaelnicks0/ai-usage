@@ -36,6 +36,7 @@ _vast_file    = os.path.expanduser("~/.config/vastai/vast_api_key")
 _vast_file_key = open(_vast_file).read().strip() if os.path.exists(_vast_file) else ""
 VASTAI_KEY    = (os.environ.get("VASTAI_API_KEY", _hermes_env.get("VASTAI_API_KEY", ""))
                  or _vast_file_key)
+EXA_SERVICE_KEY = os.environ.get("EXA_SERVICE_KEY", _hermes_env.get("EXA_SERVICE_KEY", ""))
 
 DS_PRICE_CACHE_HIT  = 0.003625
 DS_PRICE_CACHE_MISS = 0.435
@@ -43,7 +44,10 @@ DS_PRICE_OUTPUT     = 0.87
 
 
 def get(url, headers=None, timeout=10):
-    req = Request(url, headers=headers or {})
+    hdrs = {"User-Agent": "ai-usage-tool/1.0"}
+    if headers:
+        hdrs.update(headers)
+    req = Request(url, headers=hdrs)
     with urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 
@@ -173,9 +177,48 @@ def get_vastai():
     return data
 
 
+# ── Exa ──────────────────────────────────────────────────────────────────
+
+def get_exa():
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0,
+            "spent": None, "models": OrderedDict()}
+    if not EXA_SERVICE_KEY:
+        return data
+
+    headers = {"x-api-key": EXA_SERVICE_KEY}
+
+    # 1. Discover API key ID
+    try:
+        keys_resp = get("https://admin-api.exa.ai/team-management/api-keys", headers)
+        api_keys = keys_resp.get("apiKeys", [])
+        if not api_keys:
+            return data
+        key_id = api_keys[0]["id"]
+    except Exception:
+        return data
+
+    # 2. Fetch current month's usage
+    try:
+        now = datetime.now()
+        start = f"{now.year}-{now.month:02d}-01T00:00:00Z"
+        if now.month == 12:
+            end = f"{now.year + 1}-01-01T00:00:00Z"
+        else:
+            end = f"{now.year}-{now.month + 1:02d}-01T00:00:00Z"
+        params = f"start_date={start}&end_date={end}"
+        url = (f"https://admin-api.exa.ai/team-management/api-keys/"
+               f"{key_id}/usage?{params}")
+        usage = get(url, headers)
+        data["spent"] = float(usage.get("total_cost_usd", 0))
+    except Exception:
+        pass
+
+    return data
+
+
 # ── display ──────────────────────────────────────────────────────────────
 
-PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
+PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa"}
 
 def fmt_amt(n):
     if n is None: return "     —"
@@ -190,7 +233,8 @@ def _select(providers):
     ds  = get_deepseek()
     xai = get_xai()
     va  = get_vastai()
-    return [PROVIDER_NAMES[k] for k in ["deepseek", "xai", "vastai"]], [ds, xai, va]
+    exa = get_exa()
+    return [PROVIDER_NAMES[k] for k in ["deepseek", "xai", "vastai", "exa"]], [ds, xai, va, exa]
 
 
 def _token_pcts(d):
@@ -214,12 +258,12 @@ def _model_entry(d):
 
 def render_json(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa"}
     out = {}
-    for k in ["deepseek", "xai", "vastai"]:
+    for k in ["deepseek", "xai", "vastai", "exa"]:
         if k not in providers:
             continue
-        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2]}[k]
+        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3]}[k]
         entry = _model_entry(d)
         entry["balance"] = round(d["balance"], 2) if d["balance"] is not None else None
         entry["period_spend"] = round(d["spent"], 2) if d["spent"] is not None else None
@@ -235,14 +279,14 @@ def render_json(providers, show_model=False):
 
 def render_table(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa"}
 
     filtered_names = []
     filtered_data = []
-    for k in ["deepseek", "xai", "vastai"]:
+    for k in ["deepseek", "xai", "vastai", "exa"]:
         if k in providers:
             filtered_names.append(key_map[k])
-            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2]}[k])
+            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3]}[k])
 
     if not filtered_names:
         return
@@ -315,7 +359,7 @@ def render_table(providers, show_model=False):
         print()
 
 
-ALL_PROVIDERS = ["deepseek", "xai", "vastai"]
+ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa"]
 
 
 # ── cli ──────────────────────────────────────────────────────────────────
@@ -324,7 +368,7 @@ HELP_TEXT = """\
 ai-usage-tool — cross-provider balance + token usage.
 
 Fetch normalized account balance, period spend, and token breakdowns
-from DeepSeek, xAI, and Vast.ai.  Reads credentials from ~/.hermes/.env.
+from DeepSeek, xAI, Vast.ai, and Exa.  Reads credentials from ~/.hermes/.env.
 
 Usage:
   ./get-data                          all providers (default)
@@ -336,7 +380,7 @@ Usage:
   ./get-data help                     this text
 
 Options:
-  -p, --provider DEEPSEEK,XAI,VASTAI  comma-separated (default: all three)
+  -p, --provider DEEPSEEK,XAI,VASTAI,EXA  comma-separated (default: all four)
   -m, --model                         add per-model token rows below totals
   -j, --json                          machine-readable JSON output
   -h, --help                          this text
@@ -359,7 +403,8 @@ Credentials (from ~/.hermes/.env):
   DEEPSEEK_AUTH_TOKEN    platform session token (expires, see README)
   XAI_MANAGEMENT_KEY     xAI management API key
   XAI_TEAM_ID            xAI team UUID
-  VASTAI_API_KEY         Vast.ai API key (or ~/.config/vastai/vast_api_key)\
+  VASTAI_API_KEY         Vast.ai API key (or ~/.config/vastai/vast_api_key)
+  EXA_SERVICE_KEY        Exa service key (from dashboard.exa.ai)\\
 """
 
 if __name__ == "__main__":
