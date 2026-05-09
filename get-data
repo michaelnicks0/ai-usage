@@ -38,6 +38,9 @@ VASTAI_KEY    = (os.environ.get("VASTAI_API_KEY", _hermes_env.get("VASTAI_API_KE
                  or _vast_file_key)
 EXA_SERVICE_KEY = os.environ.get("EXA_SERVICE_KEY", _hermes_env.get("EXA_SERVICE_KEY", ""))
 EXA_SESSION_TOKEN = os.environ.get("EXA_SESSION_TOKEN", _hermes_env.get("EXA_SESSION_TOKEN", ""))
+X_API_AUTH_TOKEN = os.environ.get("X_API_AUTH_TOKEN", _hermes_env.get("X_API_AUTH_TOKEN", ""))
+X_API_CT0 = os.environ.get("X_API_CT0", _hermes_env.get("X_API_CT0", ""))
+X_API_ACCOUNT_ID = os.environ.get("X_API_ACCOUNT_ID", _hermes_env.get("X_API_ACCOUNT_ID", ""))
 
 DS_PRICE_CACHE_HIT  = 0.003625
 DS_PRICE_CACHE_MISS = 0.435
@@ -230,9 +233,60 @@ def get_exa():
     return data
 
 
+# ── X (Twitter) ──────────────────────────────────────────────────────────
+
+def get_x():
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0,
+            "spent": None, "models": OrderedDict()}
+    if not (X_API_AUTH_TOKEN and X_API_CT0 and X_API_ACCOUNT_ID):
+        return data
+
+    cookie = f"auth_token={X_API_AUTH_TOKEN}; ct0={X_API_CT0}"
+    headers = {"x-csrf-token": X_API_CT0, "Cookie": cookie}
+    base = "https://console.x.com/api"
+
+    try:
+        r = get(f"{base}/accounts/{X_API_ACCOUNT_ID}/credits", headers)
+        data["balance"] = float(r["credits"]["balance"])
+    except Exception:
+        pass
+
+    # fetch pricing once — reused for spend calculation
+    pricing = {}
+    try:
+        r = get(f"{base}/credits/pricing", headers)
+        pricing = r.get("eventTypePricing", {})
+    except Exception:
+        pass
+
+    try:
+        r = get(
+            f"{base}/accounts/{X_API_ACCOUNT_ID}/usage"
+            f"?interval=30days&groupBy=eventType",
+            headers)
+        usage_data = r.get("usage", {})
+        spend = 0.0
+        for app_id, app in usage_data.items():
+            if app_id == "_total" or not isinstance(app, dict):
+                continue
+            groups = app.get("groups", {})
+            for event_type, evt in groups.items():
+                count = int(evt.get("usage", 0))
+                if count > 0:
+                    data["models"][event_type] = {"input": count, "cached": 0, "output": 0}
+                    if event_type in pricing:
+                        spend += count * pricing[event_type]
+        if spend > 0:
+            data["spent"] = round(spend, 2)
+    except Exception:
+        pass
+
+    return data
+
+
 # ── display ──────────────────────────────────────────────────────────────
 
-PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa"}
+PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API"}
 
 def fmt_amt(n):
     if n is None: return "     —"
@@ -248,7 +302,8 @@ def _select(providers):
     xai = get_xai()
     va  = get_vastai()
     exa = get_exa()
-    return [PROVIDER_NAMES[k] for k in ["deepseek", "xai", "vastai", "exa"]], [ds, xai, va, exa]
+    x   = get_x()
+    return [PROVIDER_NAMES[k] for k in ALL_PROVIDERS], [ds, xai, va, exa, x]
 
 
 def _token_pcts(d):
@@ -272,12 +327,12 @@ def _model_entry(d):
 
 def render_json(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API"}
     out = {}
-    for k in ["deepseek", "xai", "vastai", "exa"]:
+    for k in ALL_PROVIDERS:
         if k not in providers:
             continue
-        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3]}[k]
+        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4]}[k]
         entry = _model_entry(d)
         entry["balance"] = round(d["balance"], 2) if d["balance"] is not None else None
         entry["period_spend"] = round(d["spent"], 2) if d["spent"] is not None else None
@@ -293,14 +348,14 @@ def render_json(providers, show_model=False):
 
 def render_table(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API"}
 
     filtered_names = []
     filtered_data = []
-    for k in ["deepseek", "xai", "vastai", "exa"]:
+    for k in ALL_PROVIDERS:
         if k in providers:
             filtered_names.append(key_map[k])
-            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3]}[k])
+            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4]}[k])
 
     if not filtered_names:
         return
@@ -373,7 +428,7 @@ def render_table(providers, show_model=False):
         print()
 
 
-ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa"]
+ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa", "x"]
 
 
 # ── cli ──────────────────────────────────────────────────────────────────
@@ -382,7 +437,7 @@ HELP_TEXT = """\
 ai-usage-tool — cross-provider balance + token usage.
 
 Fetch normalized account balance, period spend, and token breakdowns
-from DeepSeek, xAI, Vast.ai, and Exa.  Reads credentials from ~/.hermes/.env.
+from DeepSeek, xAI, Vast.ai, Exa, and X API.  Reads credentials from ~/.hermes/.env.
 
 Usage:
   ./get-data                          all providers (default)
@@ -394,7 +449,7 @@ Usage:
   ./get-data help                     this text
 
 Options:
-  -p, --provider DEEPSEEK,XAI,VASTAI,EXA  comma-separated (default: all four)
+  -p, --provider DEEPSEEK,XAI,VASTAI,EXA,X  comma-separated (default: all five)
   -m, --model                         add per-model token rows below totals
   -j, --json                          machine-readable JSON output
   -h, --help                          this text
@@ -419,7 +474,10 @@ Credentials (from ~/.hermes/.env):
   XAI_TEAM_ID            xAI team UUID
   VASTAI_API_KEY         Vast.ai API key (or ~/.config/vastai/vast_api_key)
   EXA_SERVICE_KEY        Exa service key (from dashboard.exa.ai)
-  EXA_SESSION_TOKEN      Exa dashboard session token (expires, see README)\\
+  EXA_SESSION_TOKEN      Exa dashboard session token (expires, see README)
+  X_API_AUTH_TOKEN       X console auth_token cookie (from browser DevTools)
+  X_API_CT0              X console CSRF token (ct0 cookie)
+  X_API_ACCOUNT_ID       X account ID (from console URL /accounts/{id})\\
 """
 
 if __name__ == "__main__":
