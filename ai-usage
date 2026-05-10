@@ -557,6 +557,23 @@ def render_history(provider=None, limit=10):
     print()
 
 
+def render_history_json(provider=None, limit=10):
+    rows = query_history(provider, limit)
+    out = []
+    for r in rows:
+        ts, prov, bal, spd, inp, cached, outp = r
+        out.append({
+            "timestamp": ts,
+            "provider": prov,
+            "balance": round(bal, 2) if bal is not None else None,
+            "spend": round(spd, 2) if spd is not None else None,
+            "tokens_cached": cached or 0,
+            "tokens_input": inp or 0,
+            "tokens_output": outp or 0,
+        })
+    print(json.dumps(out, indent=2))
+
+
 # ── cli ──────────────────────────────────────────────────────────────────
 
 HELP_TEXT = """\
@@ -575,6 +592,7 @@ Usage:
   ./ai-usage --history                 show last 10 snapshots (all providers)
   ./ai-usage --history --provider=xai  show last 10 xAI snapshots
   ./ai-usage --history --limit 30      show last 30 snapshots
+  ./ai-usage --history -j              JSON output for history
   ./ai-usage help                     this text
 
 Options:
@@ -641,7 +659,10 @@ if __name__ == "__main__":
         if provider and provider not in ALL_PROVIDERS:
             print(f"Unknown provider: {provider}. Choices: {','.join(ALL_PROVIDERS)}", file=sys.stderr)
             sys.exit(1)
-        render_history(provider=provider, limit=args.history_limit)
+        if args.json:
+            render_history_json(provider=provider, limit=args.history_limit)
+        else:
+            render_history(provider=provider, limit=args.history_limit)
         sys.exit(0)
 
     providers = [s.strip().lower() for s in args.provider.split(",") if s.strip()]
