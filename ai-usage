@@ -519,7 +519,7 @@ def render_history(provider=None, limit=10):
         return
 
     prefix = f"History — {PROVIDER_NAMES.get(provider, provider)}" if provider else "History — all providers"
-    print(f"{prefix}  (last {min(len(rows), limit)} snapshots)\n")
+    print(f"{prefix}  ({len(rows)} rows)\n")
 
     # Build column data: (ts_display, provider, balance, spend, in_hit, in_miss, out, total)
     cols = []
