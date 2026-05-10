@@ -591,7 +591,7 @@ Usage:
   ./ai-usage -j -m -p deepseek        JSON with per-model models key
   ./ai-usage --history                 show last 10 snapshots (all providers)
   ./ai-usage --history --provider=xai  show last 10 xAI snapshots
-  ./ai-usage --history --limit 30      show last 30 snapshots
+  ./ai-usage --history --history-limit 30  show last 30 snapshots
   ./ai-usage --history -j              JSON output for history
   ./ai-usage help                     this text
 
