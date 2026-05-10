@@ -92,7 +92,7 @@ def save_snapshot(provider, data):
 
 
 def get(url, headers=None, timeout=10):
-    hdrs = {"User-Agent": "ai-usage-tool/1.0"}
+    hdrs = {"User-Agent": "ai-usage/1.0"}
     if headers:
         hdrs.update(headers)
     req = Request(url, headers=hdrs)
@@ -560,7 +560,7 @@ def render_history(provider=None, limit=10):
 # ── cli ──────────────────────────────────────────────────────────────────
 
 HELP_TEXT = """\
-ai-usage-tool — cross-provider balance + token usage.
+ai-usage — cross-provider balance + token usage.
 
 Fetch normalized account balance, period spend, and token breakdowns
 from DeepSeek, xAI, Vast.ai, Exa, and X API.  Reads credentials from ~/.hermes/.env.
