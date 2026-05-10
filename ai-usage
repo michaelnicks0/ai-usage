@@ -5,9 +5,9 @@ Default:  balance, tokens, spend
 -m:       per-model token breakdown
 """
 
-import sys, json, os, argparse
+import sys, json, os, argparse, sqlite3
 from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 from urllib.parse import quote
 from urllib.error import URLError
@@ -45,6 +45,50 @@ X_API_ACCOUNT_ID = os.environ.get("X_API_ACCOUNT_ID", _hermes_env.get("X_API_ACC
 DS_PRICE_CACHE_HIT  = 0.003625
 DS_PRICE_CACHE_MISS = 0.435
 DS_PRICE_OUTPUT     = 0.87
+
+# ── SQLite history ────────────────────────────────────────────────────────
+
+_hermes_dir = os.path.expanduser("~/.hermes")
+os.makedirs(_hermes_dir, exist_ok=True)
+DB_PATH = os.path.join(_hermes_dir, "ai-usage.db")
+
+
+def _db():
+    """Return a connection to the SQLite DB, creating tables if needed."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS snapshots (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT    NOT NULL,
+            provider  TEXT    NOT NULL,
+            balance   REAL,
+            spend     REAL,
+            tokens_input  INTEGER DEFAULT 0,
+            tokens_cached INTEGER DEFAULT 0,
+            tokens_output INTEGER DEFAULT 0
+        )
+    """)
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_provider_ts
+        ON snapshots(provider, timestamp)
+    """)
+    return conn
+
+
+def save_snapshot(provider, data):
+    """Insert one provider's current data into the snapshots table."""
+    conn = _db()
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    conn.execute(
+        "INSERT INTO snapshots (timestamp, provider, balance, spend, "
+        "tokens_input, tokens_cached, tokens_output) "
+        "VALUES (?,?,?,?,?,?,?)",
+        (now, provider,
+         data.get("balance"), data.get("spent"),
+         data.get("input", 0), data.get("cached", 0), data.get("output", 0)))
+    conn.commit()
+    conn.close()
 
 
 def get(url, headers=None, timeout=10):
@@ -303,6 +347,13 @@ def _select(providers):
     va  = get_vastai()
     exa = get_exa()
     x   = get_x()
+
+    # Persist snapshot for every provider (even if data is empty)
+    data_map = {"deepseek": ds, "xai": xai, "vastai": va, "exa": exa, "x": x}
+    for k in ALL_PROVIDERS:
+        if k in providers:
+            save_snapshot(k, data_map[k])
+
     return [PROVIDER_NAMES[k] for k in ALL_PROVIDERS], [ds, xai, va, exa, x]
 
 
@@ -361,74 +412,149 @@ def render_table(providers, show_model=False):
         return
 
     token_labels = [
-        "Tokens In (Cache Hit)",
-        "Tokens In (Cache Miss)",
+        "Tokens In (Hit)",
+        "Tokens In (Miss)",
         "Tokens Out",
         "Tokens Total",
     ]
 
-    total_rows = [
-        ("Account Balance", lambda d: fmt_amt(d["balance"])),
-        ("Period Spend",    lambda d: fmt_amt(d["spent"])),
-        (token_labels[0],   lambda d: fmt_tok(d["cached"])),
-        (token_labels[1],   lambda d: fmt_tok(d["input"])),
-        (token_labels[2],   lambda d: fmt_tok(d["output"])),
-        (token_labels[3],   lambda d: fmt_tok(d["cached"] + d["input"] + d["output"])),
-    ]
-
-    dw = 20
-    label_w = max(len(r[0]) for r in total_rows)
-    if show_model:
-        for d in filtered_data:
-            for mname in d["models"]:
-                label_w = max(label_w, len(mname) + 2)
-
-    # ── print totals ──
-    print(f"{'':{label_w}}  " + "  ".join(n.center(dw) for n in filtered_names))
-    print(f"{'─'*label_w}──" + "──".join("─"*dw for _ in filtered_names))
-    for label, fn in total_rows:
-        vals = [fn(d) for d in filtered_data]
-        line = "  ".join(v.rjust(dw) for v in vals)
-        print(f"{label:<{label_w}}  {line}")
-
-    if not show_model:
-        print()
-        return
-
-    print()
-
-    # ── per-model sections ──
-    provider_models = [list(d["models"].keys()) for d in filtered_data]
-    max_models = max((len(m) for m in provider_models), default=0)
-
-    model_fn = [
+    # ── inverted layout: providers as rows, stats as columns ──
+    provider_col  = "Provider"
+    stat_headers  = ["Balance", "Spend"] + token_labels
+    stat_fns      = [
+        lambda d: fmt_amt(d["balance"]),
+        lambda d: fmt_amt(d["spent"]),
         lambda d: fmt_tok(d["cached"]),
         lambda d: fmt_tok(d["input"]),
         lambda d: fmt_tok(d["output"]),
         lambda d: fmt_tok(d["cached"] + d["input"] + d["output"]),
     ]
 
-    for idx in range(max_models):
-        model_names = []
-        model_data_for_row = []
-        for pi in range(len(filtered_data)):
-            if idx < len(provider_models[pi]):
-                model_names.append(f"[{provider_models[pi][idx]}]")
-                model_data_for_row.append(filtered_data[pi]["models"][provider_models[pi][idx]])
-            else:
-                model_names.append("")
-                model_data_for_row.append(_m())
+    # column widths
+    name_w = max(max(len(n) for n in filtered_names), len(provider_col))
+    col_w  = [len(h) for h in stat_headers]
+    for ci, fn in enumerate(stat_fns):
+        for d in filtered_data:
+            col_w[ci] = max(col_w[ci], len(fn(d)))
 
-        print(f"{'':{label_w}}  " + "  ".join(n.center(dw) for n in model_names))
+    # header
+    print(f"{provider_col:>{name_w}}  " + "  ".join(h.center(col_w[i]) for i, h in enumerate(stat_headers)))
+    print(f"{'─'*name_w}──" + "──".join("─"*w for w in col_w))
 
-        for li in range(4):
-            vals = [model_fn[li](d) for d in model_data_for_row]
-            line = "  ".join(v.rjust(dw) for v in vals)
-            print(f"{token_labels[li]:<{label_w}}  {line}")
+    # data rows
+    for i, pname in enumerate(filtered_names):
+        vals = [fn(filtered_data[i]) for fn in stat_fns]
+        line = "  ".join(v.rjust(col_w[j]) for j, v in enumerate(vals))
+        print(f"{pname:>{name_w}}  {line}")
+
+    print()
+
+    if not show_model:
+        return
+
+    # ── per-model section (inverted) ──
+    model_headers = token_labels
+    model_fns = [
+        lambda d: fmt_tok(d["cached"]),
+        lambda d: fmt_tok(d["input"]),
+        lambda d: fmt_tok(d["output"]),
+        lambda d: fmt_tok(d["cached"] + d["input"] + d["output"]),
+    ]
+
+    for pi in range(len(filtered_data)):
+        models = filtered_data[pi]["models"]
+        if not models:
+            continue
+        print(f"Models — {filtered_names[pi]}")
+        mnames = list(models.keys())
+        mdata  = [models[m] for m in mnames]
+
+        mname_w = max(max(len(n) for n in mnames), 5)
+        mcol_w  = [len(h) for h in model_headers]
+        for ci, fn in enumerate(model_fns):
+            for d in mdata:
+                mcol_w[ci] = max(mcol_w[ci], len(fn(d)))
+
+        # header
+        print(f"{'':>{mname_w}}  " + "  ".join(h.center(mcol_w[i]) for i, h in enumerate(model_headers)))
+        print(f"{'─'*mname_w}──" + "──".join("─"*w for w in mcol_w))
+        for mi, mname in enumerate(mnames):
+            vals = [fn(mdata[mi]) for fn in model_fns]
+            line = "  ".join(v.rjust(mcol_w[j]) for j, v in enumerate(vals))
+            print(f"{mname:>{mname_w}}  {line}")
         print()
 
 
 ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa", "x"]
+
+
+# ── history query + display ──────────────────────────────────────────────
+
+def query_history(provider=None, limit=10):
+    """Return rows from the snapshots table, newest first."""
+    conn = _db()
+    if provider:
+        rows = conn.execute(
+            "SELECT timestamp, provider, balance, spend, "
+            "tokens_input, tokens_cached, tokens_output "
+            "FROM snapshots WHERE provider=? "
+            "ORDER BY timestamp DESC LIMIT ?",
+            (provider, limit)).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT timestamp, provider, balance, spend, "
+            "tokens_input, tokens_cached, tokens_output "
+            "FROM snapshots "
+            "ORDER BY timestamp DESC LIMIT ?",
+            (limit * len(ALL_PROVIDERS),)).fetchall()
+    conn.close()
+    return rows
+
+
+def render_history(provider=None, limit=10):
+    rows = query_history(provider, limit)
+    if not rows:
+        label = f" for {PROVIDER_NAMES.get(provider, provider)}" if provider else ""
+        print(f"No history found{label}. Run ai-usage first to collect snapshots.")
+        return
+
+    prefix = f"History — {PROVIDER_NAMES.get(provider, provider)}" if provider else "History — all providers"
+    print(f"{prefix}  (last {min(len(rows), limit)} snapshots)\n")
+
+    # Build column data: (ts_display, provider, balance, spend, in_hit, in_miss, out, total)
+    cols = []
+    for r in rows:
+        ts, prov, bal, spd, inp, cached, outp = r
+        ts_short = ts.replace("T", " ").split("+")[0].split("Z")[0][:16]
+        total = (cached or 0) + (inp or 0) + (outp or 0)
+        cols.append((ts_short, prov, bal, spd, cached or 0, inp or 0, outp or 0, total))
+
+    headers = ["Timestamp", "Balance", "Spend", "In(Hit)", "In(Miss)", "Out", "Total"]
+    if not provider:
+        headers.insert(1, "Provider")
+
+    # Column widths
+    col_w = [len(h) for h in headers]
+    for row in cols:
+        ts, prov, bal, spd, cached, inp, outp, total = row
+        vals = [ts, fmt_amt(bal), fmt_amt(spd),
+                fmt_tok(cached), fmt_tok(inp), fmt_tok(outp), fmt_tok(total)]
+        if not provider:
+            vals.insert(1, prov)
+        for i, v in enumerate(vals):
+            col_w[i] = max(col_w[i], len(v))
+
+    print("  ".join(h.center(col_w[i]) for i, h in enumerate(headers)))
+    print("─" * (sum(col_w) + 2 * (len(headers) - 1)))
+    for row in cols:
+        ts, prov_name, bal, spd, cached, inp, outp, total = row
+        vals = [ts, fmt_amt(bal), fmt_amt(spd),
+                fmt_tok(cached), fmt_tok(inp), fmt_tok(outp), fmt_tok(total)]
+        if not provider:
+            vals.insert(1, prov_name)
+        line = "  ".join(v.rjust(col_w[i]) for i, v in enumerate(vals))
+        print(line)
+    print()
 
 
 # ── cli ──────────────────────────────────────────────────────────────────
@@ -440,25 +566,32 @@ Fetch normalized account balance, period spend, and token breakdowns
 from DeepSeek, xAI, Vast.ai, Exa, and X API.  Reads credentials from ~/.hermes/.env.
 
 Usage:
-  ./get-data                          all providers (default)
-  ./get-data -p xai                   single provider
-  ./get-data -p deepseek,xai          multiple providers
-  ./get-data -m                       per-model token breakdown
-  ./get-data -j                       JSON output
-  ./get-data -j -m -p deepseek        JSON with per-model models key
-  ./get-data help                     this text
+  ./ai-usage                          all providers (default)
+  ./ai-usage -p xai                   single provider
+  ./ai-usage -p deepseek,xai          multiple providers
+  ./ai-usage -m                       per-model token breakdown
+  ./ai-usage -j                       JSON output
+  ./ai-usage -j -m -p deepseek        JSON with per-model models key
+  ./ai-usage --history                 show last 10 snapshots (all providers)
+  ./ai-usage --history --provider=xai  show last 10 xAI snapshots
+  ./ai-usage --history --limit 30      show last 30 snapshots
+  ./ai-usage help                     this text
 
 Options:
   -p, --provider DEEPSEEK,XAI,VASTAI,EXA,X  comma-separated (default: all five)
   -m, --model                         add per-model token rows below totals
   -j, --json                          machine-readable JSON output
+      --history                       query saved snapshots instead of live fetch
+      --history-provider NAME         filter history to one provider
+      --history-limit N               number of snapshots to show (default: 10)
   -h, --help                          this text
 
 Output fields (table):
-  Account Balance          credit remaining (USD)
-  Period Spend             cost this billing cycle (USD)
-  Tokens In (Cache Hit)    cached prompt tokens
-  Tokens In (Cache Miss)   uncached prompt tokens
+  Provider                 provider name (rows)
+  Balance                  credit remaining (USD)
+  Spend                    cost this billing cycle (USD)
+  Tokens In (Hit)          cached prompt tokens
+  Tokens In (Miss)         uncached prompt tokens
   Tokens Out               completion tokens
   Tokens Total             sum of all token types
 
@@ -487,16 +620,28 @@ if __name__ == "__main__":
 
     p = argparse.ArgumentParser(
         description="Cross-provider balance + token usage.",
-        usage="%(prog)s [-p PROVIDERS] [-m] [-j]",
+        usage="%(prog)s [-p PROVIDERS] [-m] [-j] [--history [--history-provider P] [--history-limit N]]",
         add_help=False)
     p.add_argument("--model", "-m", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--json", "-j", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--provider", "-p", default=",".join(ALL_PROVIDERS), help=argparse.SUPPRESS)
+    p.add_argument("--history", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--history-provider", default=None, help=argparse.SUPPRESS)
+    p.add_argument("--history-limit", type=int, default=10, help=argparse.SUPPRESS)
     p.add_argument("--help", "-h", action="store_true", help=argparse.SUPPRESS)
     args = p.parse_args()
 
     if args.help:
         print(HELP_TEXT)
+        sys.exit(0)
+
+    # ── history mode: query DB, skip live fetch ──
+    if args.history:
+        provider = args.history_provider
+        if provider and provider not in ALL_PROVIDERS:
+            print(f"Unknown provider: {provider}. Choices: {','.join(ALL_PROVIDERS)}", file=sys.stderr)
+            sys.exit(1)
+        render_history(provider=provider, limit=args.history_limit)
         sys.exit(0)
 
     providers = [s.strip().lower() for s in args.provider.split(",") if s.strip()]

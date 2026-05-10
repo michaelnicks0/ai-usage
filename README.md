@@ -1,9 +1,9 @@
-# ai-usage-tool
+# ai-usage
 
 Cross-provider balance + token usage — one command.
 
 ```
-$ ./get-data
+$ ./ai-usage
                        DeepSeek                xAI                 Vast.ai                 Exa
 ────────────────────────────────────────────────────────────────────────────────────────────────
 Account Balance                    $6.03                $25.00                 $4.01                   —
@@ -17,20 +17,23 @@ Tokens Total                 126,197,209               754,131                  
 ## Usage
 
 ```bash
-./get-data                          # all providers
-./get-data help                     # same as --help
-./get-data -p xai                   # single provider
-./get-data -p deepseek,xai          # two providers
-./get-data -m                       # per-model token breakdown
-./get-data -m -p deepseek,xai       # per-model, filtered
-./get-data -j                       # JSON output
-./get-data -j -m                    # JSON with per-model breakdown
+./ai-usage                          # all providers
+./ai-usage help                     # same as --help
+./ai-usage -p xai                   # single provider
+./ai-usage -p deepseek,xai          # two providers
+./ai-usage -m                       # per-model token breakdown
+./ai-usage -m -p deepseek,xai       # per-model, filtered
+./ai-usage -j                       # JSON output
+./ai-usage -j -m                    # JSON with per-model breakdown
+./ai-usage --history                 # last 10 snapshots (all providers)
+./ai-usage --history --history-provider xai  # last 10 for xAI only
+./ai-usage --history --limit 30      # last 30 snapshots
 ```
 
 ### JSON output
 
 ```json
-$ ./get-data -j -p deepseek
+$ ./ai-usage -j -p deepseek
 {
   "deepseek": {
     "balance": 6.03,
@@ -48,7 +51,7 @@ $ ./get-data -j -p deepseek
 With `-m`, each provider gets a `models` key:
 
 ```json
-$ ./get-data -j -m -p deepseek
+$ ./ai-usage -j -m -p deepseek
 {
   "deepseek": {
     "balance": 6.03,
