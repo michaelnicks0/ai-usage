@@ -598,7 +598,7 @@ def _model_entry(d):
     }
 
 
-TOKEN_PROVIDERS = {"deepseek", "xai", "claude"}
+TOKEN_PROVIDERS = {"deepseek", "xai"}
 SUBSCRIPTION_PROVIDERS = {"codex", "claude"}  # bars below table, not rows in it
 
 
@@ -643,7 +643,15 @@ def render_json(providers, show_model=False):
         if show_model and d["models"]:
             entry["models"] = OrderedDict()
             for mname, md in d["models"].items():
-                entry["models"][mname] = _model_entry(md)
+                if k == "claude":
+                    entry["models"][mname] = {
+                        "input_tokens": md["input"],
+                        "cached_tokens": md["cached"],
+                        "output_tokens": md["output"],
+                        "total_tokens": md["input"] + md["cached"] + md["output"],
+                    }
+                else:
+                    entry["models"][mname] = _model_entry(md)
 
         if k in SUBSCRIPTION_PROVIDERS:
             sub_out[key_map[k].lower()] = entry
