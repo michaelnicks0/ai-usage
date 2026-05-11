@@ -447,15 +447,64 @@ def get_codex():
 # ── Claude Code (Anthropic) ──────────────────────────────────────────────
 
 def get_claude():
-    """Fetch Claude Code usage from local stats/config files.
+    """Fetch Claude Code usage via OAuth API + local stats files.
 
-    Reads ~/.claude.json (per-project costs) and ~/.claude/stats-cache.json
-    (aggregated model token usage).  No API calls — fully local.
+    Auto-refreshes the OAuth token by running `claude` briefly, then hits
+    Anthropic's OAuth usage endpoint for session/weekly rate limit windows.
+    Falls back to local ~/.claude.json and ~/.claude/stats-cache.json for
+    token/cost data.
     """
     data = {"balance": None, "input": 0, "cached": 0, "output": 0,
             "spent": None, "models": OrderedDict(), "claude_extra": None}
 
-    # 1. Aggregate cost + tokens from all projects in ~/.claude.json
+    creds_path = os.path.expanduser("~/.claude/.credentials.json")
+
+    # ── OAuth token refresh + rate limit API ──
+    if os.path.exists(creds_path):
+        try:
+            # Auto-refresh: run claude briefly so it refreshes the OAuth token
+            subprocess.run(
+                ["claude", "--allowed-tools", "", "--print", "-p", "hi"],
+                timeout=15, capture_output=True)
+        except Exception:
+            pass
+
+        try:
+            with open(creds_path) as f:
+                creds = json.load(f).get("claudeAiOauth", {})
+            token = creds.get("accessToken", "")
+            if token:
+                usage = get("https://api.anthropic.com/api/oauth/usage",
+                           {"Authorization": f"Bearer {token}",
+                            "anthropic-beta": "oauth-2025-04-20"})
+                extra = {"plan_type": creds.get("subscriptionType", "unknown")}
+                fh = usage.get("five_hour", {})
+                sd = usage.get("seven_day", {})
+                if fh:
+                    util = fh.get("utilization", 0)
+                    pct = round(util * 100) if util is not None else 0
+                    resets = fh.get("resets_at")
+                    extra["session"] = {
+                        "used_pct": pct,
+                        "remaining_pct": max(0, 100 - pct),
+                        "resets_at": (int(datetime.fromisoformat(resets).timestamp())
+                                      if resets else None),
+                    }
+                if sd:
+                    util = sd.get("utilization", 0)
+                    pct = round(util * 100) if util is not None else 0
+                    resets = sd.get("resets_at")
+                    extra["weekly"] = {
+                        "used_pct": pct,
+                        "remaining_pct": max(0, 100 - pct),
+                        "resets_at": (int(datetime.fromisoformat(resets).timestamp())
+                                      if resets else None),
+                    }
+                data["claude_extra"] = extra
+        except Exception:
+            pass
+
+    # ── Local file fallback: subscribe info if API didn't populate extra ──
     claude_json = os.path.expanduser("~/.claude.json")
     if os.path.exists(claude_json):
         try:
@@ -464,30 +513,25 @@ def get_claude():
             total_cost = 0.0
             for _proj_path, proj in config.get("projects", {}).items():
                 total_cost += proj.get("lastCost", 0)
-                # Also harvest tokens from lastModelUsage (per-project)
                 lmu = proj.get("lastModelUsage", {})
                 for model_name, mu in lmu.items():
                     md = data["models"].setdefault(model_name, _m())
-                    inp = mu.get("inputTokens", 0)
-                    cached = (mu.get("cacheReadInputTokens", 0) +
-                              mu.get("cacheCreationInputTokens", 0))
-                    out = mu.get("outputTokens", 0)
-                    md["input"] += inp
-                    md["cached"] += cached
-                    md["output"] += out
+                    md["input"] += mu.get("inputTokens", 0)
+                    md["cached"] += (mu.get("cacheReadInputTokens", 0) +
+                                    mu.get("cacheCreationInputTokens", 0))
+                    md["output"] += mu.get("outputTokens", 0)
             if total_cost > 0:
                 data["spent"] = round(total_cost, 4)
-            # Pull subscription info for detail bar
-            oauth = config.get("oauthAccount", {})
-            data["claude_extra"] = {
-                "billing_type": oauth.get("billingType", "unknown"),
-                "display_name": oauth.get("displayName", ""),
-                "org_name": oauth.get("organizationName", ""),
-            }
+            # Fallback extra if API didn't return rate limits
+            if not data["claude_extra"]:
+                oauth = config.get("oauthAccount", {})
+                data["claude_extra"] = {
+                    "plan_type": oauth.get("billingType", "unknown"),
+                }
         except Exception:
             pass
 
-    # 2. Merge in aggregated model usage from stats-cache (more complete)
+    # ── Aggregated model usage from stats-cache ──
     stats_path = os.path.expanduser("~/.claude/stats-cache.json")
     if os.path.exists(stats_path):
         try:
@@ -499,21 +543,10 @@ def get_claude():
                 cached = (mu.get("cacheReadInputTokens", 0) +
                           mu.get("cacheCreationInputTokens", 0))
                 out = mu.get("outputTokens", 0)
-                # Stats-cache is the canonical source — overwrite, don't add
                 md = data["models"].setdefault(model_name, _m())
-                # If stats-cache has higher values, use those (more complete)
-                if inp > md["input"]:
-                    md["input"] = inp
-                if cached > md["cached"]:
-                    md["cached"] = cached
-                if out > md["output"]:
-                    md["output"] = out
-                # Accumulate totals from whichever source had more
-                data["input"] = max(data["input"], md["input"])
-                data["cached"] = max(data["cached"], md["cached"])
-                data["output"] = max(data["output"], md["output"])
-
-            # Recompute totals from models (in case max-logic missed something)
+                if inp > md["input"]: md["input"] = inp
+                if cached > md["cached"]: md["cached"] = cached
+                if out > md["output"]: md["output"] = out
             data["input"] = sum(m["input"] for m in data["models"].values())
             data["cached"] = sum(m["cached"] for m in data["models"].values())
             data["output"] = sum(m["output"] for m in data["models"].values())
@@ -738,24 +771,26 @@ def render_table(providers, show_model=False):
         cl = d.get("claude_extra")
         if not cl:
             continue
-        billing = cl.get("billing_type", "unknown")
-        name = cl.get("display_name", "")
-        org = cl.get("org_name", "")
-        label = f"{name}" if name else "Claude Code"
-        if org and org != f"{name}'s Organization":
-            label += f" · {org}"
-        print(f"Claude Code Details  ({label}, {billing})")
+        print(f"Claude Code Details  ({cl.get('plan_type', 'unknown')})")
         print("─" * 48)
-        total_in = d["cached"] + d["input"]
-        if total_in > 0:
-            hit_pct = round(d["cached"] / total_in * 100, 1)
+        sess = cl.get("session")
+        if sess:
+            pct = sess["remaining_pct"]
             bar_w = 30
-            filled = int(bar_w * hit_pct / 100)
+            filled = int(bar_w * pct / 100)
             bar = "█" * filled + "░" * (bar_w - filled)
-            print(f"  Cache hits   {hit_pct}% of input  [{bar}]")
-            print(f"               {d['cached']:,} cached / {total_in:,} total prompt tokens")
-        if d["spent"] is not None:
-            print(f"  Total spend  ${d['spent']:,.2f} (all-time)")
+            print(f"  Session      {pct}% remaining  [{bar}]")
+            cd = _fmt_codex_countdown(sess.get("resets_at"))
+            print(f"               Resets in {cd}")
+        weekly = cl.get("weekly")
+        if weekly:
+            pct = weekly["remaining_pct"]
+            bar_w = 30
+            filled = int(bar_w * pct / 100)
+            bar = "█" * filled + "░" * (bar_w - filled)
+            print(f"  Weekly       {pct}% remaining  [{bar}]")
+            cd = _fmt_codex_countdown(weekly.get("resets_at"))
+            print(f"               Resets in {cd}")
         print()
 
     if not show_model:
