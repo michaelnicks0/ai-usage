@@ -4,14 +4,21 @@ Cross-provider balance + token usage — one command.
 
 ```
 $ ./ai-usage
-                       DeepSeek                xAI                 Vast.ai                 Exa
-────────────────────────────────────────────────────────────────────────────────────────────────
-Account Balance                    $6.03                $25.00                 $4.01                   —
-Period Spend                       $3.97                 $0.60                $20.99                $0.12
-Tokens In (Cache Hit)        118,428,800               315,968                     —                   —
-Tokens In (Cache Miss)         7,388,843               435,709                     —                   —
-Tokens Out                       379,566                 2,454                     —                   —
-Tokens Total                 126,197,209               754,131                     —                   —
+ Provider       Balance         Spend       Tokens In (Hit)  Tokens In (Miss)  Tokens Out  Tokens Total
+─────────────────────────────────────────────────────────────────────────────────────────────────────
+ DeepSeek         $6.03          $3.97          118,428,800          7,388,843      379,566    126,197,209
+     xAI         $25.00          $0.60              315,968            435,709        2,454        754,131
+ Vast.ai          $4.01         $20.99                    —                  —            —              —
+     Exa             —           $0.12                    —                  —            —              —
+   X API          $24.99          $0.04                    —                  —            —              —
+   Codex       0 credits     55% · 2h41m                   —                  —            —              —
+
+Codex Details  (plus)
+────────────────────────────────────────────────
+  Session      55% remaining  [████████████████░░░░░░░░░░░░░░]
+               Resets in 2h41m
+  Weekly       93% remaining  [███████████████████████████░░░]
+               Resets in 6d21h41m
 ```
 
 ## Usage
@@ -20,7 +27,7 @@ Tokens Total                 126,197,209               754,131                  
 ./ai-usage                          # all providers
 ./ai-usage help                     # same as --help
 ./ai-usage -p xai                   # single provider
-./ai-usage -p deepseek,xai          # two providers
+./ai-usage -p deepseek,xai,codex    # multiple providers
 ./ai-usage -m                       # per-model token breakdown
 ./ai-usage -m -p deepseek,xai       # per-model, filtered
 ./ai-usage -j                       # JSON output
@@ -73,6 +80,29 @@ $ ./ai-usage -j -m -p deepseek
 }
 ```
 
+Codex JSON is clean — just the session/weekly data:
+
+```json
+$ ./ai-usage -j -p codex
+{
+  "codex": {
+    "plan_type": "plus",
+    "session": {
+      "used_pct": 45,
+      "remaining_pct": 55,
+      "duration_mins": 300,
+      "resets_at": 1778467926
+    },
+    "weekly": {
+      "used_pct": 7,
+      "remaining_pct": 93,
+      "duration_mins": 10080,
+      "resets_at": 1779054726
+    }
+  }
+}
+```
+
 ## Providers
 
 | Provider | Balance | Period Spend | Tokens Hit | Tokens Miss | Tokens Out | Per-model |
@@ -81,6 +111,10 @@ $ ./ai-usage -j -m -p deepseek
 | xAI | ✅ mgmt API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ |
 | Vast.ai | ✅ API | ✅ charges API | — | — | — | — |
 | Exa | ✅ dashboard session | ✅ admin API | — | — | — | — |
+| X API | ✅ console API | ✅ usage × pricing | — | — | — | — |
+| Codex | — | — | — | — | — | — |
+
+Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Queried via the Codex CLI app-server JSON-RPC interface.
 
 [Architecture diagram →](architecture.html) · [Data architecture →](data-architecture.html)
 
@@ -96,6 +130,9 @@ $ ./ai-usage -j -m -p deepseek
 | Vast.ai | Spend | `GET cloud.vast.ai/api/v0/charges/` (current month) | API key |
 | Exa | Balance | `GET dashboard.exa.ai/api/get-orb-balance` | Session cookie |
 | Exa | Spend | `GET admin-api.exa.ai/team-management/api-keys/{id}/usage` | Service key |
+| X API | Balance | `GET console.x.com/api/accounts/{id}/credits` | Session cookies |
+| X API | Spend | `GET console.x.com/api/accounts/{id}/usage` + pricing | Session cookies |
+| Codex | Session/weekly | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (~/.codex/auth.json) |
 
 ## Setup
 
@@ -109,16 +146,26 @@ XAI_TEAM_ID=...                    # UUID from management keys page
 VASTAI_API_KEY=***                 # from cloud.vast.ai/manage-keys
 EXA_SERVICE_KEY=***                # from dashboard.exa.ai (service key, not search key)
 EXA_SESSION_TOKEN=***              # from dashboard.exa.ai Network tab (expires, see below)
+X_API_AUTH_TOKEN=***               # from console.x.com Network tab → auth_token cookie
+X_API_CT0=***                      # from console.x.com Network tab → ct0 cookie
+X_API_ACCOUNT_ID=***               # from console.x.com URL /accounts/{id}
+```
+
+Codex requires the Codex CLI installed and authenticated:
+
+```bash
+npm i -g @openai/codex-cli
+codex login
 ```
 
 ### Credential refresh
 
-Two credentials expire — `DEEPSEEK_AUTH_TOKEN` and `EXA_SESSION_TOKEN`. Both are browser session tokens, not API keys. All other credentials are long-lived.
+Three credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. All are browser session tokens, not API keys. All other credentials are long-lived.
 
 **DeepSeek:** When token usage shows `—`, refresh:
 1. Open https://platform.deepseek.com/usage in Chrome
 2. Press F12 → Network tab → refresh the page
-3. Find any request to `platform.deepseek.com` → copy the `Authorization: Bearer ***` header value
+3. Find any request to `platform.deepseek.com` → copy the `Authorization: Bearer *** header value
 4. Update `DEEPSEEK_AUTH_TOKEN` in `~/.hermes/.env`
 
 **Exa:** When balance shows `—`, refresh:
@@ -127,3 +174,11 @@ Two credentials expire — `DEEPSEEK_AUTH_TOKEN` and `EXA_SESSION_TOKEN`. Both a
 3. Find the request to `get-orb-balance` → click it → Cookies tab
 4. Copy the `next-auth.session-token` value
 5. Update `EXA_SESSION_TOKEN` in `~/.hermes/.env`
+
+**X API:** When balance shows `—`, refresh:
+1. Open https://console.x.com in Chrome
+2. Press F12 → Network tab → refresh
+3. Find any request → Cookies tab → copy `auth_token` and `ct0`
+4. Update `X_API_AUTH_TOKEN` and `X_API_CT0` in `~/.hermes/.env`
+
+**Codex:** OAuth token auto-refreshes. Run `codex login` if the app-server stops authenticating.

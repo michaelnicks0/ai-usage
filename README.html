@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ai-usage</title>
+<style>
+body { font-family: 'JetBrains Mono', monospace; background: #020617; color: #e2e8f0; max-width: 1100px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
+h1, h2 { color: #f8fafc; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.2rem; margin-top: 2rem; }
+code { background: #1e293b; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+pre { background: #0f172a; padding: 1rem; border-radius: 8px; border: 1px solid #1e293b; overflow-x: auto; font-size: 0.8rem; }
+pre code { background: transparent; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid #1e293b; padding: 6px 12px; text-align: left; font-size: 0.85rem; }
+th { background: #0f172a; color: #94a3b8; }
+a { color: #22d3ee; }
+hr { border: none; border-top: 1px solid #1e293b; }
+</style>
+</head>
+<body>
+<h1>ai-usage</h1>
+<p>Cross-provider balance + token usage — one command.</p>
+<pre><code>$ ./ai-usage
+ Provider       Balance         Spend       Tokens In (Hit)  Tokens In (Miss)  Tokens Out  Tokens Total
+─────────────────────────────────────────────────────────────────────────────────────────────────────
+ DeepSeek         $6.03          $3.97          118,428,800          7,388,843      379,566    126,197,209
+     xAI         $25.00          $0.60              315,968            435,709        2,454        754,131
+ Vast.ai          $4.01         $20.99                    —                  —            —              —
+     Exa             —           $0.12                    —                  —            —              —
+   X API          $24.99          $0.04                    —                  —            —              —
+   Codex       0 credits     55% · 2h41m                   —                  —            —              —
+
+Codex Details  (plus)
+────────────────────────────────────────────────
+  Session      55% remaining  [████████████████░░░░░░░░░░░░░░]
+               Resets in 2h41m
+  Weekly       93% remaining  [███████████████████████████░░░]
+               Resets in 6d21h41m
+</code></pre>
+<h2>Usage</h2>
+<pre><code class="language-bash">./ai-usage                          # all providers
+./ai-usage help                     # same as --help
+./ai-usage -p xai                   # single provider
+./ai-usage -p deepseek,xai,codex    # multiple providers
+./ai-usage -m                       # per-model token breakdown
+./ai-usage -m -p deepseek,xai       # per-model, filtered
+./ai-usage -j                       # JSON output
+./ai-usage -j -m                    # JSON with per-model breakdown
+./ai-usage --history                 # last 10 snapshots (all providers)
+./ai-usage --history --history-provider xai  # last 10 for xAI only
+./ai-usage --history --limit 30      # last 30 snapshots
+</code></pre>
+<h3>JSON output</h3>
+<pre><code class="language-json">$ ./ai-usage -j -p deepseek
+{
+  &quot;deepseek&quot;: {
+    &quot;balance&quot;: 6.03,
+    &quot;period_spend&quot;: 3.97,
+    &quot;tokens_in_hit&quot;: 118428800,
+    &quot;tokens_in_hit_percentage&quot;: 94.1,
+    &quot;tokens_in_miss&quot;: 7388843,
+    &quot;tokens_in_miss_percentage&quot;: 5.9,
+    &quot;tokens_out&quot;: 379566,
+    &quot;tokens_total&quot;: 126197209
+  }
+}
+</code></pre>
+<p>With <code>-m</code>, each provider gets a <code>models</code> key:</p>
+<pre><code class="language-json">$ ./ai-usage -j -m -p deepseek
+{
+  &quot;deepseek&quot;: {
+    &quot;balance&quot;: 6.03,
+    &quot;period_spend&quot;: 3.97,
+    &quot;tokens_in_hit&quot;: 118428800,
+    ...
+    &quot;models&quot;: {
+      &quot;deepseek-v4-pro&quot;: {
+        &quot;tokens_in_hit&quot;: 118428800,
+        &quot;tokens_in_hit_percentage&quot;: 94.1,
+        &quot;tokens_in_miss&quot;: 7388843,
+        &quot;tokens_in_miss_percentage&quot;: 5.9,
+        &quot;tokens_out&quot;: 379566,
+        &quot;tokens_total&quot;: 126197209
+      },
+      &quot;deepseek-v4-flash&quot;: { ... }
+    }
+  }
+}
+</code></pre>
+<p>Codex JSON is clean — just the session/weekly data:</p>
+<pre><code class="language-json">$ ./ai-usage -j -p codex
+{
+  &quot;codex&quot;: {
+    &quot;plan_type&quot;: &quot;plus&quot;,
+    &quot;session&quot;: {
+      &quot;used_pct&quot;: 45,
+      &quot;remaining_pct&quot;: 55,
+      &quot;duration_mins&quot;: 300,
+      &quot;resets_at&quot;: 1778467926
+    },
+    &quot;weekly&quot;: {
+      &quot;used_pct&quot;: 7,
+      &quot;remaining_pct&quot;: 93,
+      &quot;duration_mins&quot;: 10080,
+      &quot;resets_at&quot;: 1779054726
+    }
+  }
+}
+</code></pre>
+<h2>Providers</h2>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Balance</th>
+<th>Period Spend</th>
+<th>Tokens Hit</th>
+<th>Tokens Miss</th>
+<th>Tokens Out</th>
+<th>Per-model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek</td>
+<td>✅ API</td>
+<td>✅ calc from tokens</td>
+<td>✅ platform API</td>
+<td>✅ platform API</td>
+<td>✅ platform API</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>xAI</td>
+<td>✅ mgmt API</td>
+<td>✅ invoice API</td>
+<td>✅ invoice API</td>
+<td>✅ invoice API</td>
+<td>✅ invoice API</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Vast.ai</td>
+<td>✅ API</td>
+<td>✅ charges API</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Exa</td>
+<td>✅ dashboard session</td>
+<td>✅ admin API</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>X API</td>
+<td>✅ console API</td>
+<td>✅ usage × pricing</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Queried via the Codex CLI app-server JSON-RPC interface.</p>
+<p><a href="architecture.html">Architecture diagram →</a> · <a href="data-architecture.html">Data architecture →</a></p>
+<h2>API endpoints</h2>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Data</th>
+<th>Endpoint</th>
+<th>Auth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek</td>
+<td>Balance</td>
+<td><code>GET api.deepseek.com/user/balance</code></td>
+<td>API key</td>
+</tr>
+<tr>
+<td>DeepSeek</td>
+<td>Token usage</td>
+<td><code>GET platform.deepseek.com/api/v0/usage/amount</code></td>
+<td>Platform auth token</td>
+</tr>
+<tr>
+<td>xAI</td>
+<td>Balance</td>
+<td><code>GET management-api.x.ai/v1/billing/teams/{id}/prepaid/balance</code></td>
+<td>Management key</td>
+</tr>
+<tr>
+<td>xAI</td>
+<td>Token + spend</td>
+<td><code>GET management-api.x.ai/v1/billing/teams/{id}/postpaid/invoice/preview</code></td>
+<td>Management key</td>
+</tr>
+<tr>
+<td>Vast.ai</td>
+<td>Balance</td>
+<td><code>GET console.vast.ai/api/v0/users/current/</code></td>
+<td>API key</td>
+</tr>
+<tr>
+<td>Vast.ai</td>
+<td>Spend</td>
+<td><code>GET cloud.vast.ai/api/v0/charges/</code> (current month)</td>
+<td>API key</td>
+</tr>
+<tr>
+<td>Exa</td>
+<td>Balance</td>
+<td><code>GET dashboard.exa.ai/api/get-orb-balance</code></td>
+<td>Session cookie</td>
+</tr>
+<tr>
+<td>Exa</td>
+<td>Spend</td>
+<td><code>GET admin-api.exa.ai/team-management/api-keys/{id}/usage</code></td>
+<td>Service key</td>
+</tr>
+<tr>
+<td>X API</td>
+<td>Balance</td>
+<td><code>GET console.x.com/api/accounts/{id}/credits</code></td>
+<td>Session cookies</td>
+</tr>
+<tr>
+<td>X API</td>
+<td>Spend</td>
+<td><code>GET console.x.com/api/accounts/{id}/usage</code> + pricing</td>
+<td>Session cookies</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td>Session/weekly</td>
+<td><code>codex app-server</code> JSON-RPC <code>account/rateLimits/read</code></td>
+<td>OAuth (~/.codex/auth.json)</td>
+</tr>
+</tbody>
+</table>
+<h2>Setup</h2>
+<p>Add to <code>~/.hermes/.env</code>:</p>
+<pre><code class="language-bash">DEEPSEEK_API_KEY=sk-...            # from platform.deepseek.com/api_keys
+DEEPSEEK_AUTH_TOKEN=...            # from platform.deepseek.com Network tab
+XAI_MANAGEMENT_KEY=xai-token-...   # from console.x.ai/team/default/management-keys
+XAI_TEAM_ID=...                    # UUID from management keys page
+VASTAI_API_KEY=***                 # from cloud.vast.ai/manage-keys
+EXA_SERVICE_KEY=***                # from dashboard.exa.ai (service key, not search key)
+EXA_SESSION_TOKEN=***              # from dashboard.exa.ai Network tab (expires, see below)
+X_API_AUTH_TOKEN=***               # from console.x.com Network tab → auth_token cookie
+X_API_CT0=***                      # from console.x.com Network tab → ct0 cookie
+X_API_ACCOUNT_ID=***               # from console.x.com URL /accounts/{id}
+</code></pre>
+<p>Codex requires the Codex CLI installed and authenticated:</p>
+<pre><code class="language-bash">npm i -g @openai/codex-cli
+codex login
+</code></pre>
+<h3>Credential refresh</h3>
+<p>Three credentials expire — <code>DEEPSEEK_AUTH_TOKEN</code>, <code>EXA_SESSION_TOKEN</code>, and the X API cookies. All are browser session tokens, not API keys. All other credentials are long-lived.</p>
+<p><strong>DeepSeek:</strong> When token usage shows <code>—</code>, refresh:
+1. Open https://platform.deepseek.com/usage in Chrome
+2. Press F12 → Network tab → refresh the page
+3. Find any request to <code>platform.deepseek.com</code> → copy the <code>Authorization: Bearer *** header value
+4. Update</code>DEEPSEEK_AUTH_TOKEN<code>in</code>~/.hermes/.env`</p>
+<p><strong>Exa:</strong> When balance shows <code>—</code>, refresh:
+1. Open https://dashboard.exa.ai/new-billing in Chrome
+2. Press F12 → Network tab → refresh the page
+3. Find the request to <code>get-orb-balance</code> → click it → Cookies tab
+4. Copy the <code>next-auth.session-token</code> value
+5. Update <code>EXA_SESSION_TOKEN</code> in <code>~/.hermes/.env</code></p>
+<p><strong>X API:</strong> When balance shows <code>—</code>, refresh:
+1. Open https://console.x.com in Chrome
+2. Press F12 → Network tab → refresh
+3. Find any request → Cookies tab → copy <code>auth_token</code> and <code>ct0</code>
+4. Update <code>X_API_AUTH_TOKEN</code> and <code>X_API_CT0</code> in <code>~/.hermes/.env</code></p>
+<p><strong>Codex:</strong> OAuth token auto-refreshes. Run <code>codex login</code> if the app-server stops authenticating.</p>
+</body>
+</html>

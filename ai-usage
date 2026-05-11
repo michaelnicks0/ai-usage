@@ -5,7 +5,7 @@ Default:  balance, tokens, spend
 -m:       per-model token breakdown
 """
 
-import sys, json, os, argparse, sqlite3
+import sys, json, os, argparse, sqlite3, subprocess, threading, time
 from collections import OrderedDict
 from datetime import datetime, timezone
 from urllib.request import Request, urlopen
@@ -328,9 +328,125 @@ def get_x():
     return data
 
 
+# ── Codex (OpenAI) ──────────────────────────────────────────────────────
+
+def get_codex():
+    """Fetch Codex quota via CLI app-server JSON-RPC.
+
+    Requires `codex login` (OAuth token at ~/.codex/auth.json).
+    Returns session/weekly windows + credits in codex_extra, plus
+    standard balance/token dict for table compatibility.
+    """
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0,
+            "spent": None, "models": OrderedDict(), "codex_extra": None}
+
+    try:
+        proc = subprocess.Popen(
+            ["codex", "app-server"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, text=True, bufsize=1)
+    except FileNotFoundError:
+        return data
+
+    pending = {}
+    lock = threading.Lock()
+
+    def reader():
+        for line in iter(proc.stdout.readline, ""):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                msg = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            rid = msg.get("id")
+            with lock:
+                if rid in pending:
+                    evt, container = pending.pop(rid)
+                    container["msg"] = msg
+                    evt.set()
+
+    t = threading.Thread(target=reader, daemon=True)
+    t.start()
+
+    def rpc(method, params=None, rpc_timeout=10):
+        if params is None:
+            params = {}
+        req_id = int(time.time() * 1000) % 100000
+        payload = json.dumps({"jsonrpc": "2.0", "id": req_id,
+                              "method": method, "params": params}) + "\n"
+        evt = threading.Event()
+        container = {}
+        with lock:
+            pending[req_id] = (evt, container)
+        try:
+            proc.stdin.write(payload)
+            proc.stdin.flush()
+        except (BrokenPipeError, OSError):
+            with lock:
+                pending.pop(req_id, None)
+            return None
+        if not evt.wait(timeout=rpc_timeout):
+            with lock:
+                pending.pop(req_id, None)
+            return None
+        msg = container.get("msg", {})
+        if "error" in msg:
+            return None
+        return msg.get("result")
+
+    try:
+        rpc("initialize", {"clientInfo": {"name": "ai-usage", "version": "1.0.0"}})
+        result = rpc("account/rateLimits/read")
+        if result:
+            rl = result.get("rateLimits", result)
+            p = rl.get("primary")
+            s = rl.get("secondary")
+            cr = rl.get("credits", {})
+            extra = {"plan_type": rl.get("planType", "unknown")}
+            if p:
+                extra["session"] = {
+                    "used_pct": p.get("usedPercent", 0),
+                    "remaining_pct": 100 - p.get("usedPercent", 0),
+                    "duration_mins": p.get("windowDurationMins", 0),
+                    "resets_at": p.get("resetsAt"),
+                }
+            if s:
+                extra["weekly"] = {
+                    "used_pct": s.get("usedPercent", 0),
+                    "remaining_pct": 100 - s.get("usedPercent", 0),
+                    "duration_mins": s.get("windowDurationMins", 0),
+                    "resets_at": s.get("resetsAt"),
+                }
+            extra["credits"] = {
+                "balance": cr.get("balance", "0"),
+                "has_credits": cr.get("hasCredits", False),
+            }
+            data["codex_extra"] = extra
+            # Map credits → balance for table
+            try:
+                data["balance"] = float(extra["credits"]["balance"])
+            except (ValueError, TypeError):
+                data["balance"] = 0
+    except Exception:
+        pass
+    finally:
+        try:
+            proc.stdin.close()
+        except Exception:
+            pass
+        try:
+            proc.wait(timeout=3)
+        except Exception:
+            proc.kill()
+
+    return data
+
+
 # ── display ──────────────────────────────────────────────────────────────
 
-PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API"}
+PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex"}
 
 def fmt_amt(n):
     if n is None: return "     —"
@@ -347,14 +463,15 @@ def _select(providers):
     va  = get_vastai()
     exa = get_exa()
     x   = get_x()
+    cx  = get_codex()
 
     # Persist snapshot for every provider (even if data is empty)
-    data_map = {"deepseek": ds, "xai": xai, "vastai": va, "exa": exa, "x": x}
+    data_map = {"deepseek": ds, "xai": xai, "vastai": va, "exa": exa, "x": x, "codex": cx}
     for k in ALL_PROVIDERS:
         if k in providers:
             save_snapshot(k, data_map[k])
 
-    return [PROVIDER_NAMES[k] for k in ALL_PROVIDERS], [ds, xai, va, exa, x]
+    return [PROVIDER_NAMES[k] for k in ALL_PROVIDERS], [ds, xai, va, exa, x, cx]
 
 
 def _token_pcts(d):
@@ -376,15 +493,35 @@ def _model_entry(d):
     }
 
 
+TOKEN_PROVIDERS = {"deepseek", "xai"}
+
+
 def render_json(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex"}
     out = {}
     for k in ALL_PROVIDERS:
         if k not in providers:
             continue
-        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4]}[k]
-        entry = _model_entry(d)
+        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5]}[k]
+
+        # Codex: only output the codex block — no balance/spend/token fluff
+        if k == "codex":
+            cx = d.get("codex_extra")
+            if cx:
+                out[key_map[k].lower()] = {
+                    "plan_type": cx.get("plan_type"),
+                    "session": cx.get("session"),
+                    "weekly": cx.get("weekly"),
+                }
+            continue
+
+        # Only include token fields for LLM providers
+        if k in TOKEN_PROVIDERS:
+            entry = _model_entry(d)
+        else:
+            entry = {}
+
         entry["balance"] = round(d["balance"], 2) if d["balance"] is not None else None
         entry["period_spend"] = round(d["spent"], 2) if d["spent"] is not None else None
 
@@ -397,16 +534,36 @@ def render_json(providers, show_model=False):
     print(json.dumps(out, indent=2))
 
 
+def _fmt_codex_countdown(ts):
+    """Format time until reset for Codex display."""
+    if ts is None:
+        return "—"
+    delta = datetime.fromtimestamp(ts, tz=timezone.utc) - datetime.now(timezone.utc)
+    if delta.total_seconds() <= 0:
+        return "now"
+    days = delta.days
+    hours, rem = divmod(delta.seconds, 3600)
+    mins = rem // 60
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if mins or not parts:
+        parts.append(f"{mins}m")
+    return "".join(parts)
+
+
 def render_table(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex"}
 
     filtered_names = []
     filtered_data = []
     for k in ALL_PROVIDERS:
         if k in providers:
             filtered_names.append(key_map[k])
-            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4]}[k])
+            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5]}[k])
 
     if not filtered_names:
         return
@@ -418,12 +575,30 @@ def render_table(providers, show_model=False):
         "Tokens Total",
     ]
 
+    # Codex: show credits as balance, session% in spend column
+    def _fmt_bal(d):
+        if d.get("codex_extra"):
+            cx = d["codex_extra"]
+            bal = cx.get("credits", {}).get("balance", "0")
+            return f"{bal} credits".rjust(10) if len(f"{bal} credits") <= 10 else f"{bal} credits"
+        return fmt_amt(d["balance"])
+
+    def _fmt_spend(d):
+        if d.get("codex_extra"):
+            cx = d["codex_extra"]
+            sess = cx.get("session")
+            if sess:
+                pct = sess["remaining_pct"]
+                cd = _fmt_codex_countdown(sess.get("resets_at"))
+                return f"{pct}% · {cd}".rjust(12)
+        return fmt_amt(d["spent"])
+
     # ── inverted layout: providers as rows, stats as columns ──
     provider_col  = "Provider"
     stat_headers  = ["Balance", "Spend"] + token_labels
     stat_fns      = [
-        lambda d: fmt_amt(d["balance"]),
-        lambda d: fmt_amt(d["spent"]),
+        lambda d: _fmt_bal(d),
+        lambda d: _fmt_spend(d),
         lambda d: fmt_tok(d["cached"]),
         lambda d: fmt_tok(d["input"]),
         lambda d: fmt_tok(d["output"]),
@@ -448,6 +623,34 @@ def render_table(providers, show_model=False):
         print(f"{pname:>{name_w}}  {line}")
 
     print()
+
+    # ── Codex detail section (always shown when codex is in results) ──
+    for i, pname in enumerate(filtered_names):
+        d = filtered_data[i]
+        cx = d.get("codex_extra")
+        if not cx:
+            continue
+        print(f"Codex Details  ({cx.get('plan_type', 'unknown')})")
+        print("─" * 48)
+        sess = cx.get("session")
+        if sess:
+            pct = sess["remaining_pct"]
+            bar_w = 30
+            filled = int(bar_w * pct / 100)
+            bar = "█" * filled + "░" * (bar_w - filled)
+            print(f"  Session      {pct}% remaining  [{bar}]")
+            cd = _fmt_codex_countdown(sess.get("resets_at"))
+            print(f"               Resets in {cd}")
+        weekly = cx.get("weekly")
+        if weekly:
+            pct = weekly["remaining_pct"]
+            bar_w = 30
+            filled = int(bar_w * pct / 100)
+            bar = "█" * filled + "░" * (bar_w - filled)
+            print(f"  Weekly       {pct}% remaining  [{bar}]")
+            cd = _fmt_codex_countdown(weekly.get("resets_at"))
+            print(f"               Resets in {cd}")
+        print()
 
     if not show_model:
         return
@@ -485,7 +688,7 @@ def render_table(providers, show_model=False):
         print()
 
 
-ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa", "x"]
+ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa", "x", "codex"]
 
 
 # ── history query + display ──────────────────────────────────────────────
@@ -580,12 +783,12 @@ HELP_TEXT = """\
 ai-usage — cross-provider balance + token usage.
 
 Fetch normalized account balance, period spend, and token breakdowns
-from DeepSeek, xAI, Vast.ai, Exa, and X API.  Reads credentials from ~/.hermes/.env.
+from DeepSeek, xAI, Vast.ai, Exa, X API, and Codex.  Reads credentials from ~/.hermes/.env.
 
 Usage:
   ./ai-usage                          all providers (default)
   ./ai-usage -p xai                   single provider
-  ./ai-usage -p deepseek,xai          multiple providers
+  ./ai-usage -p deepseek,xai,codex    multiple providers
   ./ai-usage -m                       per-model token breakdown
   ./ai-usage -j                       JSON output
   ./ai-usage -j -m -p deepseek        JSON with per-model models key
@@ -596,7 +799,7 @@ Usage:
   ./ai-usage help                     this text
 
 Options:
-  -p, --provider DEEPSEEK,XAI,VASTAI,EXA,X  comma-separated (default: all five)
+  -p, --provider DEEPSEEK,XAI,VASTAI,EXA,X,CODEX  comma-separated (default: all six)
   -m, --model                         add per-model token rows below totals
   -j, --json                          machine-readable JSON output
       --history                       query saved snapshots instead of live fetch
@@ -606,17 +809,19 @@ Options:
 
 Output fields (table):
   Provider                 provider name (rows)
-  Balance                  credit remaining (USD)
-  Spend                    cost this billing cycle (USD)
+  Balance                  credit remaining (USD; Codex shows credits)
+  Spend                    cost this billing cycle (USD; Codex shows session%)
   Tokens In (Hit)          cached prompt tokens
   Tokens In (Miss)         uncached prompt tokens
   Tokens Out               completion tokens
   Tokens Total             sum of all token types
+  [Codex detail section]   session/weekly bars + countdowns below table
 
 Output fields (JSON):
   balance, period_spend, tokens_in_hit, tokens_in_hit_percentage,
   tokens_in_miss, tokens_in_miss_percentage, tokens_out, tokens_total
   With -m: adds "models" key with per-model breakdown.
+  Codex: adds "codex" key with {plan_type, session, weekly, credits}.
 
 Credentials (from ~/.hermes/.env):
   DEEPSEEK_API_KEY       standard API key
@@ -628,7 +833,8 @@ Credentials (from ~/.hermes/.env):
   EXA_SESSION_TOKEN      Exa dashboard session token (expires, see README)
   X_API_AUTH_TOKEN       X console auth_token cookie (from browser DevTools)
   X_API_CT0              X console CSRF token (ct0 cookie)
-  X_API_ACCOUNT_ID       X account ID (from console URL /accounts/{id})\\
+  X_API_ACCOUNT_ID       X account ID (from console URL /accounts/{id})
+  Codex: requires `codex login` for OAuth token (~/.codex/auth.json)\
 """
 
 if __name__ == "__main__":
