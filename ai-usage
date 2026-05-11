@@ -638,6 +638,14 @@ def render_json(providers, show_model=False):
         entry["balance"] = round(d["balance"], 2) if d["balance"] is not None else None
         entry["period_spend"] = round(d["spent"], 2) if d["spent"] is not None else None
 
+        # Claude: include rate-limit windows like Codex
+        if k == "claude":
+            cl = d.get("claude_extra")
+            if cl:
+                entry["plan_type"] = cl.get("plan_type")
+                entry["session"] = cl.get("session")
+                entry["weekly"] = cl.get("weekly")
+
         if show_model and d["models"]:
             entry["models"] = OrderedDict()
             for mname, md in d["models"].items():
@@ -688,7 +696,7 @@ def render_table(providers, show_model=False):
         "Tokens Total",
     ]
 
-    # Codex: show credits as balance, session% in spend column
+    # Codex/Claude: show session% in spend column
     def _fmt_bal(d):
         if d.get("codex_extra"):
             cx = d["codex_extra"]
@@ -700,6 +708,13 @@ def render_table(providers, show_model=False):
         if d.get("codex_extra"):
             cx = d["codex_extra"]
             sess = cx.get("session")
+            if sess:
+                pct = sess["remaining_pct"]
+                cd = _fmt_codex_countdown(sess.get("resets_at"))
+                return f"{pct}% · {cd}".rjust(12)
+        if d.get("claude_extra"):
+            cl = d["claude_extra"]
+            sess = cl.get("session")
             if sess:
                 pct = sess["remaining_pct"]
                 cd = _fmt_codex_countdown(sess.get("resets_at"))
