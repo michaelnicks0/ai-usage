@@ -42,6 +42,17 @@ X_API_AUTH_TOKEN = os.environ.get("X_API_AUTH_TOKEN", _hermes_env.get("X_API_AUT
 X_API_CT0 = os.environ.get("X_API_CT0", _hermes_env.get("X_API_CT0", ""))
 X_API_ACCOUNT_ID = os.environ.get("X_API_ACCOUNT_ID", _hermes_env.get("X_API_ACCOUNT_ID", ""))
 
+# ── Nous OAuth token (from ~/.hermes/auth.json) ──
+_auth_json = os.path.expanduser("~/.hermes/auth.json")
+NOUS_TOKEN = ""
+if os.path.exists(_auth_json):
+    try:
+        with open(_auth_json) as f:
+            _aj = json.load(f)
+        NOUS_TOKEN = _aj.get("providers", {}).get("nous", {}).get("access_token", "")
+    except Exception:
+        pass
+
 DS_PRICE_CACHE_HIT  = 0.003625
 DS_PRICE_CACHE_MISS = 0.435
 DS_PRICE_OUTPUT     = 0.87
@@ -548,9 +559,46 @@ def get_claude():
     return data
 
 
+# ── Nous Research ─────────────────────────────────────────────────────────
+
+def get_nous():
+    """Fetch Nous Portal subscription/credit info via OAuth account API.
+
+    Nous Research offers subscription credits ($20+/mo) that deplete as
+    you use managed services (web search, image gen, TTS, browser).
+    No per-request token tracking — credits are the unit of consumption.
+    """
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0,
+            "spent": None, "models": OrderedDict(), "nous_extra": None}
+
+    if NOUS_TOKEN:
+        try:
+            r = get("https://portal.nousresearch.com/api/oauth/account",
+                    {"Authorization": f"Bearer {NOUS_TOKEN}"})
+            sub = r.get("subscription", {})
+            credits = sub.get("credits_remaining")
+            charge = sub.get("monthly_charge")
+            period_end = sub.get("current_period_end")
+
+            data["balance"] = round(float(credits), 2) if credits is not None else None
+            data["spent"] = round(float(charge), 2) if charge is not None else None
+
+            data["nous_extra"] = {
+                "plan_type": sub.get("plan", "unknown"),
+                "tier": sub.get("tier"),
+                "monthly_charge": data["spent"],
+                "credits_remaining": data["balance"],
+                "current_period_end": period_end,
+            }
+        except Exception:
+            pass
+
+    return data
+
+
 # ── display ──────────────────────────────────────────────────────────────
 
-PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code"}
+PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code", "nous": "Nous"}
 
 def fmt_amt(n):
     if n is None: return "     —"
@@ -562,21 +610,22 @@ def fmt_tok(n):
 
 
 def _select(providers):
-    ds  = get_deepseek()
-    xai = get_xai()
-    va  = get_vastai()
-    exa = get_exa()
-    x   = get_x()
-    cx  = get_codex()
-    cl  = get_claude()
+    ds   = get_deepseek()
+    xai  = get_xai()
+    va   = get_vastai()
+    exa  = get_exa()
+    x    = get_x()
+    cx   = get_codex()
+    cl   = get_claude()
+    nous = get_nous()
 
     # Persist snapshot for every provider (even if data is empty)
-    data_map = {"deepseek": ds, "xai": xai, "vastai": va, "exa": exa, "x": x, "codex": cx, "claude": cl}
+    data_map = {"deepseek": ds, "xai": xai, "vastai": va, "exa": exa, "x": x, "codex": cx, "claude": cl, "nous": nous}
     for k in ALL_PROVIDERS:
         if k in providers:
             save_snapshot(k, data_map[k])
 
-    return [PROVIDER_NAMES[k] for k in ALL_PROVIDERS], [ds, xai, va, exa, x, cx, cl]
+    return [PROVIDER_NAMES[k] for k in ALL_PROVIDERS], [ds, xai, va, exa, x, cx, cl, nous]
 
 
 def _token_pcts(d):
@@ -604,13 +653,13 @@ SUBSCRIPTION_PROVIDERS = {"codex", "claude"}  # bars below table, not rows in it
 
 def render_json(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code", "nous": "Nous"}
     api_out = {}
     sub_out = {}
     for k in ALL_PROVIDERS:
         if k not in providers:
             continue
-        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5], "claude": data[6]}[k]
+        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5], "claude": data[6], "nous": data[7]}[k]
 
         # Codex: only output the codex block — no balance/spend/token fluff
         if k == "codex":
@@ -639,6 +688,15 @@ def render_json(providers, show_model=False):
                 entry["plan_type"] = cl.get("plan_type")
                 entry["session"] = cl.get("session")
                 entry["weekly"] = cl.get("weekly")
+
+        # Nous: include subscription details
+        if k == "nous":
+            nx = d.get("nous_extra")
+            if nx:
+                entry["plan_type"] = nx.get("plan_type")
+                entry["monthly_charge"] = nx.get("monthly_charge")
+                entry["credits_remaining"] = nx.get("credits_remaining")
+                entry["current_period_end"] = nx.get("current_period_end")
 
         if show_model and d["models"]:
             entry["models"] = OrderedDict()
@@ -688,7 +746,7 @@ def _fmt_codex_countdown(ts):
 
 def render_table(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code", "nous": "Nous"}
 
     filtered_names = []
     filtered_data = []
@@ -696,7 +754,7 @@ def render_table(providers, show_model=False):
     for k in ALL_PROVIDERS:
         if k in providers:
             filtered_names.append(key_map[k])
-            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5], "claude": data[6]}[k])
+            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5], "claude": data[6], "nous": data[7]}[k])
             filtered_keys.append(k)
 
     # Build API-only lists for the table rows (subscription providers go in detail sections)
@@ -829,6 +887,38 @@ def render_table(providers, show_model=False):
             print(f"               Resets in {cd}")
         print()
 
+    # ── Nous detail section ──
+    for i, pname in enumerate(filtered_names):
+        d = filtered_data[i]
+        nx = d.get("nous_extra")
+        if not nx:
+            continue
+        print(f"Nous Details  ({nx.get('plan_type', 'unknown')})")
+        print("─" * 48)
+        cr = nx.get("credits_remaining")
+        if cr is not None:
+            print(f"  Subscription credits  ${cr:,.2f} remaining")
+        mc = nx.get("monthly_charge")
+        if mc is not None:
+            print(f"  Monthly charge        ${mc:,.2f}")
+        pe = nx.get("current_period_end")
+        if pe:
+            try:
+                dt = datetime.fromisoformat(pe.replace("Z", "+00:00"))
+                delta = dt - datetime.now(timezone.utc)
+                if delta.total_seconds() > 0:
+                    days = delta.days
+                    hours, rem = divmod(delta.seconds, 3600)
+                    mins = rem // 60
+                    parts = []
+                    if days: parts.append(f"{days}d")
+                    if hours or parts: parts.append(f"{hours}h")
+                    if mins or not parts: parts.append(f"{mins}m")
+                    print(f"  Renews in             {' '.join(parts)}")
+            except Exception:
+                pass
+        print()
+
     if not show_model:
         return
 
@@ -865,7 +955,7 @@ def render_table(providers, show_model=False):
         print()
 
 
-ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa", "x", "codex", "claude"]
+ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa", "x", "codex", "claude", "nous"]
 
 
 # ── history query + display ──────────────────────────────────────────────
@@ -976,7 +1066,7 @@ Usage:
   ./ai-usage help                     this text
 
 Options:
-  -p, --provider DEEPSEEK,XAI,VASTAI,EXA,X,CODEX,CLAUDE  comma-separated (default: all seven)
+  -p, --provider DEEPSEEK,XAI,VASTAI,EXA,X,CODEX,CLAUDE,NOUS  comma-separated (default: all eight)
   -m, --model                         add per-model token rows below totals
   -j, --json                          machine-readable JSON output
       --history                       query saved snapshots instead of live fetch
@@ -993,12 +1083,17 @@ Output fields (table):
   Tokens Out               completion tokens
   Tokens Total             sum of all token types
   [Codex detail section]   session/weekly bars + countdowns below table
+  [Claude detail section]  session/weekly bars + countdowns below table
+  [Nous detail section]    subscription credits, monthly charge, renewal countdown
 
 Output fields (JSON):
   balance, period_spend, tokens_in_hit, tokens_in_hit_percentage,
   tokens_in_miss, tokens_in_miss_percentage, tokens_out, tokens_total
   With -m: adds "models" key with per-model breakdown.
   Codex: adds "codex" key with {plan_type, session, weekly, credits}.
+  Claude: adds "claude code" key with balance, period_spend, plan_type, session, weekly.
+  Nous: adds "nous" key with balance, period_spend, plan_type, monthly_charge,
+    credits_remaining, current_period_end.
 
 Credentials (from ~/.hermes/.env):
   DEEPSEEK_API_KEY       standard API key
@@ -1012,7 +1107,8 @@ Credentials (from ~/.hermes/.env):
   X_API_CT0              X console CSRF token (ct0 cookie)
   X_API_ACCOUNT_ID       X account ID (from console URL /accounts/{id})
   Codex: requires `codex login` for OAuth token (~/.codex/auth.json)
-  Claude Code: reads local ~/.claude.json and ~/.claude/stats-cache.json\
+  Claude Code: reads local ~/.claude.json and ~/.claude/stats-cache.json
+  Nous: reads ~/.hermes/auth.json providers.nous.access_token (auto)
 """
 
 if __name__ == "__main__":

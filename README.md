@@ -12,6 +12,7 @@ $ ./ai-usage
      Exa             —           $0.12                    —                  —            —              —
    X API          $24.99          $0.04                    —                  —            —              —
    Codex       0 credits     55% · 2h41m                   —                  —            —              —
+    Nous         $21.74         $20.00                    —                  —            —              —
 
 Codex Details  (plus)
 ────────────────────────────────────────────────
@@ -103,6 +104,22 @@ $ ./ai-usage -j -p codex
 }
 ```
 
+Nous uses subscription credits that deplete with usage:
+
+```json
+$ ./ai-usage -j -p nous
+{
+  "nous": {
+    "balance": 21.74,
+    "period_spend": 20.00,
+    "plan_type": "Plus",
+    "monthly_charge": 20.00,
+    "credits_remaining": 21.74,
+    "current_period_end": "2026-06-11T15:17:45.000Z"
+  }
+}
+```
+
 ## Providers
 
 | Provider | Balance | Period Spend | Tokens Hit | Tokens Miss | Tokens Out | Per-model |
@@ -113,8 +130,11 @@ $ ./ai-usage -j -p codex
 | Exa | ✅ dashboard session | ✅ admin API | — | — | — | — |
 | X API | ✅ console API | ✅ usage × pricing | — | — | — | — |
 | Codex | — | — | — | — | — | — |
+| Nous | ✅ OAuth API | ✅ subscription charge | — | — | — | — |
 
 Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Queried via the Codex CLI app-server JSON-RPC interface.
+
+Nous Research uses subscription credits ($20+/mo) that deplete as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API. Stored in the `api` JSON branch (not `subscription`) since its credit model behaves like API credits.
 
 [Architecture diagram →](architecture.html) · [Data architecture →](data-architecture.html)
 
@@ -133,6 +153,8 @@ Codex uses its own data model: session usage %, weekly usage %, and plan type. N
 | X API | Balance | `GET console.x.com/api/accounts/{id}/credits` | Session cookies |
 | X API | Spend | `GET console.x.com/api/accounts/{id}/usage` + pricing | Session cookies |
 | Codex | Session/weekly | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (~/.codex/auth.json) |
+| Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (~/.claude/.credentials.json) |
+| Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json)
 
 ## Setup
 
@@ -158,9 +180,13 @@ npm i -g @openai/codex-cli
 codex login
 ```
 
+Claude Code reads local config files automatically (`~/.claude.json`, `~/.claude/stats-cache.json`, `~/.claude/.credentials.json`). No separate setup needed beyond having Claude Code installed and authenticated.
+
+Nous reads the OAuth token from `~/.hermes/auth.json` (set up by `hermes model` or the Hermes setup wizard). No manual credential needed if you've already configured Nous Portal as a provider in Hermes.
+
 ### Credential refresh
 
-Three credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. All are browser session tokens, not API keys. All other credentials are long-lived.
+Three credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. All are browser session tokens, not API keys. The Nous OAuth token auto-refreshes via Hermes. All other credentials are long-lived.
 
 **DeepSeek:** When token usage shows `—`, refresh:
 1. Open https://platform.deepseek.com/usage in Chrome
