@@ -599,12 +599,14 @@ def _model_entry(d):
 
 
 TOKEN_PROVIDERS = {"deepseek", "xai", "claude"}
+SUBSCRIPTION_PROVIDERS = {"codex", "claude"}  # bars below table, not rows in it
 
 
 def render_json(providers, show_model=False):
     names, data = _select(providers)
     key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code"}
-    out = {}
+    api_out = {}
+    sub_out = {}
     for k in ALL_PROVIDERS:
         if k not in providers:
             continue
@@ -614,7 +616,7 @@ def render_json(providers, show_model=False):
         if k == "codex":
             cx = d.get("codex_extra")
             if cx:
-                out[key_map[k].lower()] = {
+                sub_out["codex"] = {
                     "plan_type": cx.get("plan_type"),
                     "session": cx.get("session"),
                     "weekly": cx.get("weekly"),
@@ -643,7 +645,16 @@ def render_json(providers, show_model=False):
             for mname, md in d["models"].items():
                 entry["models"][mname] = _model_entry(md)
 
-        out[key_map[k].lower()] = entry
+        if k in SUBSCRIPTION_PROVIDERS:
+            sub_out[key_map[k].lower()] = entry
+        else:
+            api_out[key_map[k].lower()] = entry
+
+    out = OrderedDict()
+    if api_out:
+        out["api"] = api_out
+    if sub_out:
+        out["subscription"] = sub_out
     print(json.dumps(out, indent=2))
 
 
@@ -673,15 +684,24 @@ def render_table(providers, show_model=False):
 
     filtered_names = []
     filtered_data = []
+    filtered_keys  = []
     for k in ALL_PROVIDERS:
         if k in providers:
             filtered_names.append(key_map[k])
             filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5], "claude": data[6]}[k])
+            filtered_keys.append(k)
+
+    # Build API-only lists for the table rows (subscription providers go in detail sections)
+    table_names = [n for n, k in zip(filtered_names, filtered_keys) if k not in SUBSCRIPTION_PROVIDERS]
+    table_data  = [d for d, k in zip(filtered_data, filtered_keys) if k not in SUBSCRIPTION_PROVIDERS]
 
     if not filtered_names:
         return
 
-    token_labels = [
+    if not table_names:
+        print()  # skip table, go straight to detail sections
+    else:
+        token_labels = [
         "Tokens In (Hit)",
         "Tokens In (Miss)",
         "Tokens Out",
@@ -715,7 +735,7 @@ def render_table(providers, show_model=False):
 
     # ── inverted layout: providers as rows, stats as columns ──
     provider_col  = "Provider"
-    stat_headers  = ["Balance", "Spend"] + token_labels
+    stat_headers  = ["Balance", "Spend"] + (token_labels if table_names else [])
     stat_fns      = [
         lambda d: _fmt_bal(d),
         lambda d: _fmt_spend(d),
@@ -723,26 +743,27 @@ def render_table(providers, show_model=False):
         lambda d: fmt_tok(d["input"]),
         lambda d: fmt_tok(d["output"]),
         lambda d: fmt_tok(d["cached"] + d["input"] + d["output"]),
-    ]
+    ] if table_names else []
 
-    # column widths
-    name_w = max(max(len(n) for n in filtered_names), len(provider_col))
-    col_w  = [len(h) for h in stat_headers]
-    for ci, fn in enumerate(stat_fns):
-        for d in filtered_data:
-            col_w[ci] = max(col_w[ci], len(fn(d)))
+    if table_names:
+        # column widths
+        name_w = max(max(len(n) for n in table_names), len(provider_col))
+        col_w  = [len(h) for h in stat_headers]
+        for ci, fn in enumerate(stat_fns):
+            for d in table_data:
+                col_w[ci] = max(col_w[ci], len(fn(d)))
 
-    # header
-    print(f"{provider_col:>{name_w}}  " + "  ".join(h.center(col_w[i]) for i, h in enumerate(stat_headers)))
-    print(f"{'─'*name_w}──" + "──".join("─"*w for w in col_w))
+        # header
+        print(f"{provider_col:>{name_w}}  " + "  ".join(h.center(col_w[i]) for i, h in enumerate(stat_headers)))
+        print(f"{'─'*name_w}──" + "──".join("─"*w for w in col_w))
 
-    # data rows
-    for i, pname in enumerate(filtered_names):
-        vals = [fn(filtered_data[i]) for fn in stat_fns]
-        line = "  ".join(v.rjust(col_w[j]) for j, v in enumerate(vals))
-        print(f"{pname:>{name_w}}  {line}")
+        # data rows
+        for i, pname in enumerate(table_names):
+            vals = [fn(table_data[i]) for fn in stat_fns]
+            line = "  ".join(v.rjust(col_w[j]) for j, v in enumerate(vals))
+            print(f"{pname:>{name_w}}  {line}")
 
-    print()
+        print()
 
     # ── Codex detail section (always shown when codex is in results) ──
     for i, pname in enumerate(filtered_names):
