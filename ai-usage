@@ -453,7 +453,7 @@ def get_claude():
     (aggregated model token usage).  No API calls — fully local.
     """
     data = {"balance": None, "input": 0, "cached": 0, "output": 0,
-            "spent": None, "models": OrderedDict()}
+            "spent": None, "models": OrderedDict(), "claude_extra": None}
 
     # 1. Aggregate cost + tokens from all projects in ~/.claude.json
     claude_json = os.path.expanduser("~/.claude.json")
@@ -477,6 +477,13 @@ def get_claude():
                     md["output"] += out
             if total_cost > 0:
                 data["spent"] = round(total_cost, 4)
+            # Pull subscription info for detail bar
+            oauth = config.get("oauthAccount", {})
+            data["claude_extra"] = {
+                "billing_type": oauth.get("billingType", "unknown"),
+                "display_name": oauth.get("displayName", ""),
+                "org_name": oauth.get("organizationName", ""),
+            }
         except Exception:
             pass
 
@@ -723,6 +730,32 @@ def render_table(providers, show_model=False):
             print(f"  Weekly       {pct}% remaining  [{bar}]")
             cd = _fmt_codex_countdown(weekly.get("resets_at"))
             print(f"               Resets in {cd}")
+        print()
+
+    # ── Claude Code detail section ──
+    for i, pname in enumerate(filtered_names):
+        d = filtered_data[i]
+        cl = d.get("claude_extra")
+        if not cl:
+            continue
+        billing = cl.get("billing_type", "unknown")
+        name = cl.get("display_name", "")
+        org = cl.get("org_name", "")
+        label = f"{name}" if name else "Claude Code"
+        if org and org != f"{name}'s Organization":
+            label += f" · {org}"
+        print(f"Claude Code Details  ({label}, {billing})")
+        print("─" * 48)
+        total_in = d["cached"] + d["input"]
+        if total_in > 0:
+            hit_pct = round(d["cached"] / total_in * 100, 1)
+            bar_w = 30
+            filled = int(bar_w * hit_pct / 100)
+            bar = "█" * filled + "░" * (bar_w - filled)
+            print(f"  Cache hits   {hit_pct}% of input  [{bar}]")
+            print(f"               {d['cached']:,} cached / {total_in:,} total prompt tokens")
+        if d["spent"] is not None:
+            print(f"  Total spend  ${d['spent']:,.2f} (all-time)")
         print()
 
     if not show_model:
