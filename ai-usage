@@ -444,9 +444,81 @@ def get_codex():
     return data
 
 
+# ── Claude Code (Anthropic) ──────────────────────────────────────────────
+
+def get_claude():
+    """Fetch Claude Code usage from local stats/config files.
+
+    Reads ~/.claude.json (per-project costs) and ~/.claude/stats-cache.json
+    (aggregated model token usage).  No API calls — fully local.
+    """
+    data = {"balance": None, "input": 0, "cached": 0, "output": 0,
+            "spent": None, "models": OrderedDict()}
+
+    # 1. Aggregate cost + tokens from all projects in ~/.claude.json
+    claude_json = os.path.expanduser("~/.claude.json")
+    if os.path.exists(claude_json):
+        try:
+            with open(claude_json) as f:
+                config = json.load(f)
+            total_cost = 0.0
+            for _proj_path, proj in config.get("projects", {}).items():
+                total_cost += proj.get("lastCost", 0)
+                # Also harvest tokens from lastModelUsage (per-project)
+                lmu = proj.get("lastModelUsage", {})
+                for model_name, mu in lmu.items():
+                    md = data["models"].setdefault(model_name, _m())
+                    inp = mu.get("inputTokens", 0)
+                    cached = (mu.get("cacheReadInputTokens", 0) +
+                              mu.get("cacheCreationInputTokens", 0))
+                    out = mu.get("outputTokens", 0)
+                    md["input"] += inp
+                    md["cached"] += cached
+                    md["output"] += out
+            if total_cost > 0:
+                data["spent"] = round(total_cost, 4)
+        except Exception:
+            pass
+
+    # 2. Merge in aggregated model usage from stats-cache (more complete)
+    stats_path = os.path.expanduser("~/.claude/stats-cache.json")
+    if os.path.exists(stats_path):
+        try:
+            with open(stats_path) as f:
+                stats = json.load(f)
+            model_usage = stats.get("modelUsage", {})
+            for model_name, mu in model_usage.items():
+                inp = mu.get("inputTokens", 0)
+                cached = (mu.get("cacheReadInputTokens", 0) +
+                          mu.get("cacheCreationInputTokens", 0))
+                out = mu.get("outputTokens", 0)
+                # Stats-cache is the canonical source — overwrite, don't add
+                md = data["models"].setdefault(model_name, _m())
+                # If stats-cache has higher values, use those (more complete)
+                if inp > md["input"]:
+                    md["input"] = inp
+                if cached > md["cached"]:
+                    md["cached"] = cached
+                if out > md["output"]:
+                    md["output"] = out
+                # Accumulate totals from whichever source had more
+                data["input"] = max(data["input"], md["input"])
+                data["cached"] = max(data["cached"], md["cached"])
+                data["output"] = max(data["output"], md["output"])
+
+            # Recompute totals from models (in case max-logic missed something)
+            data["input"] = sum(m["input"] for m in data["models"].values())
+            data["cached"] = sum(m["cached"] for m in data["models"].values())
+            data["output"] = sum(m["output"] for m in data["models"].values())
+        except Exception:
+            pass
+
+    return data
+
+
 # ── display ──────────────────────────────────────────────────────────────
 
-PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex"}
+PROVIDER_NAMES = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code"}
 
 def fmt_amt(n):
     if n is None: return "     —"
@@ -464,14 +536,15 @@ def _select(providers):
     exa = get_exa()
     x   = get_x()
     cx  = get_codex()
+    cl  = get_claude()
 
     # Persist snapshot for every provider (even if data is empty)
-    data_map = {"deepseek": ds, "xai": xai, "vastai": va, "exa": exa, "x": x, "codex": cx}
+    data_map = {"deepseek": ds, "xai": xai, "vastai": va, "exa": exa, "x": x, "codex": cx, "claude": cl}
     for k in ALL_PROVIDERS:
         if k in providers:
             save_snapshot(k, data_map[k])
 
-    return [PROVIDER_NAMES[k] for k in ALL_PROVIDERS], [ds, xai, va, exa, x, cx]
+    return [PROVIDER_NAMES[k] for k in ALL_PROVIDERS], [ds, xai, va, exa, x, cx, cl]
 
 
 def _token_pcts(d):
@@ -493,17 +566,17 @@ def _model_entry(d):
     }
 
 
-TOKEN_PROVIDERS = {"deepseek", "xai"}
+TOKEN_PROVIDERS = {"deepseek", "xai", "claude"}
 
 
 def render_json(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code"}
     out = {}
     for k in ALL_PROVIDERS:
         if k not in providers:
             continue
-        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5]}[k]
+        d = {"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5], "claude": data[6]}[k]
 
         # Codex: only output the codex block — no balance/spend/token fluff
         if k == "codex":
@@ -556,14 +629,14 @@ def _fmt_codex_countdown(ts):
 
 def render_table(providers, show_model=False):
     names, data = _select(providers)
-    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex"}
+    key_map = {"deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex", "claude": "Claude Code"}
 
     filtered_names = []
     filtered_data = []
     for k in ALL_PROVIDERS:
         if k in providers:
             filtered_names.append(key_map[k])
-            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5]}[k])
+            filtered_data.append({"deepseek": data[0], "xai": data[1], "vastai": data[2], "exa": data[3], "x": data[4], "codex": data[5], "claude": data[6]}[k])
 
     if not filtered_names:
         return
@@ -688,7 +761,7 @@ def render_table(providers, show_model=False):
         print()
 
 
-ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa", "x", "codex"]
+ALL_PROVIDERS = ["deepseek", "xai", "vastai", "exa", "x", "codex", "claude"]
 
 
 # ── history query + display ──────────────────────────────────────────────
@@ -783,12 +856,12 @@ HELP_TEXT = """\
 ai-usage — cross-provider balance + token usage.
 
 Fetch normalized account balance, period spend, and token breakdowns
-from DeepSeek, xAI, Vast.ai, Exa, X API, and Codex.  Reads credentials from ~/.hermes/.env.
+from DeepSeek, xAI, Vast.ai, Exa, X API, Codex, and Claude Code.  Reads credentials from ~/.hermes/.env.
 
 Usage:
   ./ai-usage                          all providers (default)
   ./ai-usage -p xai                   single provider
-  ./ai-usage -p deepseek,xai,codex    multiple providers
+  ./ai-usage -p deepseek,xai,claude   multiple providers
   ./ai-usage -m                       per-model token breakdown
   ./ai-usage -j                       JSON output
   ./ai-usage -j -m -p deepseek        JSON with per-model models key
@@ -799,7 +872,7 @@ Usage:
   ./ai-usage help                     this text
 
 Options:
-  -p, --provider DEEPSEEK,XAI,VASTAI,EXA,X,CODEX  comma-separated (default: all six)
+  -p, --provider DEEPSEEK,XAI,VASTAI,EXA,X,CODEX,CLAUDE  comma-separated (default: all seven)
   -m, --model                         add per-model token rows below totals
   -j, --json                          machine-readable JSON output
       --history                       query saved snapshots instead of live fetch
@@ -834,7 +907,8 @@ Credentials (from ~/.hermes/.env):
   X_API_AUTH_TOKEN       X console auth_token cookie (from browser DevTools)
   X_API_CT0              X console CSRF token (ct0 cookie)
   X_API_ACCOUNT_ID       X account ID (from console URL /accounts/{id})
-  Codex: requires `codex login` for OAuth token (~/.codex/auth.json)\
+  Codex: requires `codex login` for OAuth token (~/.codex/auth.json)
+  Claude Code: reads local ~/.claude.json and ~/.claude/stats-cache.json\
 """
 
 if __name__ == "__main__":
