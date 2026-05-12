@@ -136,7 +136,7 @@ Codex uses its own data model: session usage %, weekly usage %, and plan type. N
 
 Nous Research uses subscription credits ($20+/mo) that deplete as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API. Stored in the `api` JSON branch (not `subscription`) since its credit model behaves like API credits.
 
-[Architecture diagram →](architecture.html) · [Data architecture →](data-architecture.html)
+[Architecture diagram →](architecture.html) · [Data architecture →](data-architecture.html) · [Audit report →](AUDIT.html)
 
 ## API endpoints
 
