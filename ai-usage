@@ -747,8 +747,8 @@ def render_json(providers, show_model=False):
         else:
             entry = {}
 
-        entry["balance"] = round(d["balance"], 2) if d["balance"] is not None else None
-        entry["period_spend"] = round(d["spent"], 2) if d["spent"] is not None else None
+        entry["balance"] = round(d["balance"], 2) if d["balance"] is not None and k != "claude" else None
+        entry["period_spend"] = round(d["spent"], 2) if d["spent"] is not None and k != "claude" else None
 
         # Claude: include rate-limit windows like Codex
         if k == "claude":
@@ -757,6 +757,9 @@ def render_json(providers, show_model=False):
                 entry["plan_type"] = cl.get("plan_type")
                 entry["session"] = cl.get("session")
                 entry["weekly"] = cl.get("weekly")
+            # Remove balance/spend — Claude has no prepaid balance and spend is lifetime not period
+            entry.pop("balance", None)
+            entry.pop("period_spend", None)
 
         # Nous: include subscription details
         if k == "nous":
