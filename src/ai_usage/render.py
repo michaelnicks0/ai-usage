@@ -116,17 +116,11 @@ def render_json(
         if name == "codex":
             cx = d.extra
             if cx:
-                entry_cx: dict = {
+                sub_out["codex"] = {
                     "plan_type": cx.get("plan_type"),
                     "session": cx.get("session"),
                     "weekly": cx.get("weekly"),
                 }
-                # Add renews_in to session and weekly
-                for window_key in ("session", "weekly"):
-                    win = entry_cx.get(window_key)
-                    if win and win.get("resets_at"):
-                        win["renews_in"] = _fmt_renewal(win["resets_at"])
-                sub_out["codex"] = entry_cx
             continue
 
         # Token fields only for LLM providers
@@ -147,11 +141,6 @@ def render_json(
                 entry["plan_type"] = cl.get("plan_type")
                 entry["session"] = cl.get("session")
                 entry["weekly"] = cl.get("weekly")
-                # Add renews_in
-                for window_key in ("session", "weekly"):
-                    win = entry.get(window_key)
-                    if win and win.get("resets_at"):
-                        win["renews_in"] = _fmt_renewal(win["resets_at"])
             entry.pop("balance", None)
             entry.pop("period_spend", None)
 
@@ -297,7 +286,9 @@ def render_table(
             filled = int(bar_w * pct / 100)
             bar = "█" * filled + "░" * (bar_w - filled)
             lines.append(f"  Session      {pct}% remaining  [{bar}]")
-            lines.append(f"               Resets in {fmt_countdown(sess.get('resets_at'))}")
+            cd = fmt_countdown(sess.get("resets_at"))
+            if cd != "—":
+                lines.append(f"               Resets in {cd}")
         weekly = cx.get("weekly")
         if weekly:
             pct = weekly["remaining_pct"]
@@ -305,9 +296,9 @@ def render_table(
             filled = int(bar_w * pct / 100)
             bar = "█" * filled + "░" * (bar_w - filled)
             lines.append(f"  Weekly       {pct}% remaining  [{bar}]")
-            cd = _fmt_renewal(weekly.get("resets_at"))
-            if cd:
-                lines.append(f"               Renews in {cd}")
+            cd = fmt_countdown(weekly.get("resets_at"))
+            if cd != "—":
+                lines.append(f"               Resets in {cd}")
         lines.append("")
 
     # ── Claude detail section ──
@@ -322,7 +313,9 @@ def render_table(
             filled = int(bar_w * pct / 100)
             bar = "█" * filled + "░" * (bar_w - filled)
             lines.append(f"  Session      {pct}% remaining  [{bar}]")
-            lines.append(f"               Resets in {fmt_countdown(sess.get('resets_at'))}")
+            cd = fmt_countdown(sess.get("resets_at"))
+            if cd != "—":
+                lines.append(f"               Resets in {cd}")
         weekly = cl.get("weekly")
         if weekly:
             pct = weekly["remaining_pct"]
@@ -330,9 +323,9 @@ def render_table(
             filled = int(bar_w * pct / 100)
             bar = "█" * filled + "░" * (bar_w - filled)
             lines.append(f"  Weekly       {pct}% remaining  [{bar}]")
-            cd = _fmt_renewal(weekly.get("resets_at"))
-            if cd:
-                lines.append(f"               Renews in {cd}")
+            cd = fmt_countdown(weekly.get("resets_at"))
+            if cd != "—":
+                lines.append(f"               Resets in {cd}")
         lines.append("")
 
     # ── Nous detail section ──
