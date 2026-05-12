@@ -56,6 +56,29 @@ def fmt_countdown(ts: int | None) -> str:
     return "".join(parts)
 
 
+def _fmt_renewal(ts: int | None) -> str:
+    """Format a renewal countdown with spaces, matching Nous style.
+
+    Returns empty string if ts is None or already passed.
+    """
+    if ts is None:
+        return ""
+    delta = datetime.fromtimestamp(ts, tz=timezone.utc) - datetime.now(timezone.utc)
+    if delta.total_seconds() <= 0:
+        return ""
+    days = delta.days
+    hours, rem = divmod(delta.seconds, 3600)
+    mins = rem // 60
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours or parts:
+        parts.append(f"{hours}h")
+    if mins or not parts:
+        parts.append(f"{mins}m")
+    return " ".join(parts)
+
+
 def _token_pcts(d: ProviderData) -> tuple[float, float]:
     total_in = d.tokens.cached + d.tokens.input
     if total_in > 0:
@@ -263,7 +286,9 @@ def render_table(
             filled = int(bar_w * pct / 100)
             bar = "█" * filled + "░" * (bar_w - filled)
             lines.append(f"  Weekly       {pct}% remaining  [{bar}]")
-            lines.append(f"               Resets in {fmt_countdown(weekly.get('resets_at'))}")
+            cd = _fmt_renewal(weekly.get("resets_at"))
+            if cd:
+                lines.append(f"               Renews in {cd}")
         lines.append("")
 
     # ── Claude detail section ──
@@ -286,7 +311,9 @@ def render_table(
             filled = int(bar_w * pct / 100)
             bar = "█" * filled + "░" * (bar_w - filled)
             lines.append(f"  Weekly       {pct}% remaining  [{bar}]")
-            lines.append(f"               Resets in {fmt_countdown(weekly.get('resets_at'))}")
+            cd = _fmt_renewal(weekly.get("resets_at"))
+            if cd:
+                lines.append(f"               Renews in {cd}")
         lines.append("")
 
     # ── Nous detail section ──
@@ -304,19 +331,10 @@ def render_table(
         if pe:
             try:
                 dt = datetime.fromisoformat(pe.replace("Z", "+00:00"))
-                delta = dt - datetime.now(timezone.utc)
-                if delta.total_seconds() > 0:
-                    days = delta.days
-                    hours, rem = divmod(delta.seconds, 3600)
-                    mins = rem // 60
-                    parts = []
-                    if days:
-                        parts.append(f"{days}d")
-                    if hours or parts:
-                        parts.append(f"{hours}h")
-                    if mins or not parts:
-                        parts.append(f"{mins}m")
-                    lines.append(f"  Renews in             {' '.join(parts)}")
+                ts = int(dt.timestamp())
+                cd = _fmt_renewal(ts)
+                if cd:
+                    lines.append(f"  Renews in             {cd}")
             except Exception:
                 pass
         lines.append("")
