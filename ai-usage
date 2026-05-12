@@ -7,9 +7,9 @@ Default:  balance, tokens, spend
 
 import sys, json, os, argparse, sqlite3, subprocess, threading, time
 from collections import OrderedDict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from urllib.request import Request, urlopen
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 from urllib.error import URLError
 
 # ── credentials ──────────────────────────────────────────────────────────
@@ -561,20 +561,89 @@ def get_claude():
 
 # ── Nous Research ─────────────────────────────────────────────────────────
 
+def _nous_refresh_token():
+    """Refresh the Nous OAuth access token using the refresh token.
+
+    Returns the new access token, or empty string on failure.
+    Updates ~/.hermes/auth.json in-place on success.
+    """
+    auth_path = os.path.expanduser("~/.hermes/auth.json")
+    if not os.path.exists(auth_path):
+        return ""
+    try:
+        with open(auth_path) as f:
+            auth = json.load(f)
+        nous = auth.get("providers", {}).get("nous", {})
+        rt = nous.get("refresh_token", "")
+        cid = nous.get("client_id", "")
+        if not rt or not cid:
+            return nous.get("access_token", "")
+
+        data = urlencode({"grant_type": "refresh_token",
+                           "refresh_token": rt,
+                           "client_id": cid}).encode()
+        req = Request("https://portal.nousresearch.com/api/oauth/token",
+                      data=data,
+                      headers={"Content-Type": "application/x-www-form-urlencoded"})
+        with urlopen(req, timeout=10) as resp:
+            new_tokens = json.loads(resp.read())
+
+        at = new_tokens.get("access_token", "")
+        if at:
+            nous["access_token"] = at
+            if "refresh_token" in new_tokens:
+                nous["refresh_token"] = new_tokens["refresh_token"]
+            expires_in = new_tokens.get("expires_in", 900)
+            nous["expires_at"] = (datetime.now(timezone.utc) +
+                                  timedelta(seconds=expires_in)).isoformat()
+            nous["obtained_at"] = datetime.now(timezone.utc).isoformat()
+            with open(auth_path, "w") as f:
+                json.dump(auth, f, indent=2)
+        return at
+    except Exception:
+        return ""
+
+
+def _nous_get_token():
+    """Return a valid Nous OAuth access token, refreshing if expired."""
+    auth_path = os.path.expanduser("~/.hermes/auth.json")
+    if not os.path.exists(auth_path):
+        return NOUS_TOKEN
+    try:
+        with open(auth_path) as f:
+            auth = json.load(f)
+        nous = auth.get("providers", {}).get("nous", {})
+        at = nous.get("access_token", "")
+        expires = nous.get("expires_at", "")
+        if at and expires:
+            try:
+                exp = datetime.fromisoformat(expires)
+                if datetime.now(timezone.utc) >= exp:
+                    return _nous_refresh_token()
+            except (ValueError, TypeError):
+                pass
+        return at or NOUS_TOKEN
+    except Exception:
+        return NOUS_TOKEN
+
+
 def get_nous():
     """Fetch Nous Portal subscription/credit info via OAuth account API.
 
     Nous Research offers subscription credits ($20+/mo) that deplete as
     you use managed services (web search, image gen, TTS, browser).
     No per-request token tracking — credits are the unit of consumption.
+
+    OAuth access token is auto-refreshed if expired.
     """
     data = {"balance": None, "input": 0, "cached": 0, "output": 0,
             "spent": None, "models": OrderedDict(), "nous_extra": None}
 
-    if NOUS_TOKEN:
+    token = _nous_get_token()
+    if token:
         try:
             r = get("https://portal.nousresearch.com/api/oauth/account",
-                    {"Authorization": f"Bearer {NOUS_TOKEN}"})
+                    {"Authorization": f"Bearer {token}"})
             sub = r.get("subscription", {})
             credits = sub.get("credits_remaining")
             charge = sub.get("monthly_charge")
