@@ -116,11 +116,17 @@ def render_json(
         if name == "codex":
             cx = d.extra
             if cx:
-                sub_out["codex"] = {
+                entry_cx: dict = {
                     "plan_type": cx.get("plan_type"),
                     "session": cx.get("session"),
                     "weekly": cx.get("weekly"),
                 }
+                # Add renews_in to session and weekly
+                for window_key in ("session", "weekly"):
+                    win = entry_cx.get(window_key)
+                    if win and win.get("resets_at"):
+                        win["renews_in"] = _fmt_renewal(win["resets_at"])
+                sub_out["codex"] = entry_cx
             continue
 
         # Token fields only for LLM providers
@@ -141,6 +147,11 @@ def render_json(
                 entry["plan_type"] = cl.get("plan_type")
                 entry["session"] = cl.get("session")
                 entry["weekly"] = cl.get("weekly")
+                # Add renews_in
+                for window_key in ("session", "weekly"):
+                    win = entry.get(window_key)
+                    if win and win.get("resets_at"):
+                        win["renews_in"] = _fmt_renewal(win["resets_at"])
             entry.pop("balance", None)
             entry.pop("period_spend", None)
 
@@ -152,6 +163,14 @@ def render_json(
                 entry["monthly_charge"] = nx.get("monthly_charge")
                 entry["credits_remaining"] = nx.get("credits_remaining")
                 entry["current_period_end"] = nx.get("current_period_end")
+                # Compute renews_in from period end
+                pe = nx.get("current_period_end")
+                if pe:
+                    try:
+                        dt = datetime.fromisoformat(pe.replace("Z", "+00:00"))
+                        entry["renews_in"] = _fmt_renewal(int(dt.timestamp()))
+                    except Exception:
+                        pass
 
         if show_model and d.models:
             entry["models"] = OrderedDict()
