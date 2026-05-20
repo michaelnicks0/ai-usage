@@ -105,7 +105,7 @@ class GoogleProvider(Provider):
         # 2. Fetch Available Models and Quotas
         try:
             req_fm = urllib.request.Request(
-                "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+                "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
                 data=json.dumps({"project": project_id}).encode(),
                 headers={
                     "Authorization": f"Bearer {access_token}",
