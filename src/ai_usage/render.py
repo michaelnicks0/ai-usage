@@ -283,98 +283,76 @@ def render_table(
 
         lines.append("")
 
-    # ── Codex detail section ──
-    if "codex" in results and results["codex"].extra:
-        cx = results["codex"].extra
-        lines.append(f"Codex Details  ({cx.get('plan_type', 'unknown')})")
-        lines.append("─" * 48)
-        sess = cx.get("session")
-        if sess:
-            pct = sess["remaining_pct"]
-            bar_w = 30
-            filled = int(bar_w * pct / 100)
-            bar = "█" * filled + "░" * (bar_w - filled)
-            lines.append(f"  Session      {pct}% remaining  [{bar}]")
-            cd = fmt_countdown(sess.get("resets_at"))
-            if cd != "—":
-                lines.append(f"               Resets in {cd}")
-        weekly = cx.get("weekly")
-        if weekly:
-            pct = weekly["remaining_pct"]
-            bar_w = 30
-            filled = int(bar_w * pct / 100)
-            bar = "█" * filled + "░" * (bar_w - filled)
-            lines.append(f"  Weekly       {pct}% remaining  [{bar}]")
-            cd = fmt_countdown(weekly.get("resets_at"))
-            if cd != "—":
-                lines.append(f"               Resets in {cd}")
-        lines.append("")
-
-    # ── Claude detail section ──
+    # ── Subscription Quotas table ──
+    sub_rows = []
+    
+    # 1. Claude Code
     if "claude" in results and results["claude"].extra:
         cl = results["claude"].extra
-        lines.append(f"Claude Code Details  ({cl.get('plan_type', 'unknown')})")
-        lines.append("─" * 48)
         sess = cl.get("session")
         if sess:
-            pct = sess["remaining_pct"]
-            bar_w = 30
-            filled = int(bar_w * pct / 100)
-            bar = "█" * filled + "░" * (bar_w - filled)
-            lines.append(f"  Session      {pct}% remaining  [{bar}]")
-            cd = fmt_countdown(sess.get("resets_at"))
-            if cd != "—":
-                lines.append(f"               Resets in {cd}")
+            sub_rows.append((
+                "Claude Code",
+                "Session",
+                f"{sess['remaining_pct']}%",
+                fmt_countdown(sess.get("resets_at"))
+            ))
         weekly = cl.get("weekly")
         if weekly:
-            pct = weekly["remaining_pct"]
-            bar_w = 30
-            filled = int(bar_w * pct / 100)
-            bar = "█" * filled + "░" * (bar_w - filled)
-            lines.append(f"  Weekly       {pct}% remaining  [{bar}]")
-            cd = fmt_countdown(weekly.get("resets_at"))
-            if cd != "—":
-                lines.append(f"               Resets in {cd}")
-        lines.append("")
-
-    # ── Google detail section ──
+            sub_rows.append((
+                "Claude Code",
+                "Weekly",
+                f"{weekly['remaining_pct']}%",
+                fmt_countdown(weekly.get("resets_at"))
+            ))
+            
+    # 2. Codex
+    if "codex" in results and results["codex"].extra:
+        cx = results["codex"].extra
+        sess = cx.get("session")
+        if sess:
+            sub_rows.append((
+                "Codex",
+                "Session",
+                f"{sess['remaining_pct']}%",
+                fmt_countdown(sess.get("resets_at"))
+            ))
+        weekly = cx.get("weekly")
+        if weekly:
+            sub_rows.append((
+                "Codex",
+                "Weekly",
+                f"{weekly['remaining_pct']}%",
+                fmt_countdown(weekly.get("resets_at"))
+            ))
+            
+    # 3. Google AI Studio
     if "google" in results and results["google"].extra:
         go = results["google"].extra
-        lines.append(f"Google AI Studio Details  ({go.get('plan_type', 'unknown')})")
-        lines.append("─" * 48)
         models_data = go.get("models", {})
         for mkey, mval in models_data.items():
-            pct = mval["remaining_pct"]
-            bar_w = 30
-            filled = int(bar_w * pct / 100)
-            bar = "█" * filled + "░" * (bar_w - filled)
-            lines.append(f"  {mval['display_name']:<24} {pct:3.0f}% remaining  [{bar}]")
-            cd = fmt_countdown(mval.get("resets_at"))
-            if cd != "—":
-                lines.append(f"                           Resets in {cd}")
-        lines.append("")
-
-    # ── Nous detail section ──
-    if "nous" in results and results["nous"].extra:
-        nx = results["nous"].extra
-        lines.append(f"Nous Details  ({nx.get('plan_type', 'unknown')})")
-        lines.append("─" * 48)
-        cr = nx.get("credits_remaining")
-        if cr is not None:
-            lines.append(f"  Subscription credits  ${cr:,.2f} remaining")
-        mc = nx.get("monthly_charge")
-        if mc is not None:
-            lines.append(f"  Monthly charge        ${mc:,.2f}")
-        pe = nx.get("current_period_end")
-        if pe:
-            try:
-                dt = datetime.fromisoformat(pe.replace("Z", "+00:00"))
-                ts = int(dt.timestamp())
-                cd = _fmt_renewal(ts)
-                if cd:
-                    lines.append(f"  Renews in             {cd}")
-            except Exception:
-                pass
+            sub_rows.append((
+                "Google AI Studio",
+                mval["display_name"],
+                f"{mval['remaining_pct']}%",
+                fmt_countdown(mval.get("resets_at"))
+            ))
+            
+    if sub_rows:
+        headers = ["Subscription", "Resource", "Remaining", "Resets In"]
+        
+        # Compute column widths
+        sub_w = max(len(r[0]) for r in [headers] + sub_rows)
+        res_w = max(len(r[1]) for r in [headers] + sub_rows)
+        rem_w = max(len(r[2]) for r in [headers] + sub_rows)
+        rst_w = max(len(r[3]) for r in [headers] + sub_rows)
+        
+        lines.append("Subscription Quotas")
+        lines.append(f"{headers[0]:<{sub_w}}  {headers[1]:<{res_w}}  {headers[2]:>{rem_w}}  {headers[3]:>{rst_w}}")
+        lines.append(f"{'─' * sub_w}  {'─' * res_w}  {'─' * rem_w}  {'─' * rst_w}")
+        
+        for r in sub_rows:
+            lines.append(f"{r[0]:<{sub_w}}  {r[1]:<{res_w}}  {r[2]:>{rem_w}}  {r[3]:>{rst_w}}")
         lines.append("")
 
     # ── Per-model section ──

@@ -115,8 +115,9 @@ class TestRenderTable:
             },
         )
         result = render_table({"codex": pd})
-        assert "Codex Details" in result
-        assert "55% remaining" in result
+        assert "Subscription Quotas" in result
+        assert "Codex" in result
+        assert "55%" in result
 
     def test_claude_detail_section(self):
         pd = ProviderData(
@@ -126,20 +127,9 @@ class TestRenderTable:
             },
         )
         result = render_table({"claude": pd})
-        assert "Claude Code Details" in result
-
-    def test_nous_detail_section(self):
-        pd = ProviderData(
-            balance=21.74, spent=20.00,
-            extra={
-                "plan_type": "Plus",
-                "credits_remaining": 21.74,
-                "monthly_charge": 20.00,
-            },
-        )
-        result = render_table({"nous": pd})
-        assert "Nous Details" in result
-        assert "$21.74" in result
+        assert "Subscription Quotas" in result
+        assert "Claude Code" in result
+        assert "80%" in result
 
     def test_models_section(self):
         td = TokenData(input=500, cached=300, output=100)
