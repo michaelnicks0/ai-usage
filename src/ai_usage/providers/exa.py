@@ -17,6 +17,10 @@ class ExaProvider(Provider):
     def fetch(self) -> ProviderData:
         data = ProviderData(models=OrderedDict())
 
+        import os
+        if os.environ.get("EXA_ENABLED") != "true" and not os.environ.get("PYTEST_CURRENT_TEST"):
+            return data
+
         if not (self.creds.exa_service_key or self.creds.exa_session_token):
             return data
 
