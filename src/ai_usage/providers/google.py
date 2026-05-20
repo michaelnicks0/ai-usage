@@ -118,11 +118,15 @@ class GoogleProvider(Provider):
                 
             models = models_res.get("models", {})
             
-            # Map target models for details view
+            # Map target models for details view (the 7 main models from the UI)
             target_models = {
                 "claude-opus-4-6-thinking": "Claude Opus 4.6 (Think)",
+                "claude-sonnet-4-6": "Claude Sonnet 4.6 (Think)",
                 "gemini-3.1-pro-high": "Gemini 3.1 Pro (High)",
-                "gemini-3-flash-agent": "Gemini 3.5 Flash (High)"
+                "gemini-2.5-pro": "Gemini 2.5 Pro",
+                "gemini-3-flash-agent": "Gemini 3.5 Flash (High)",
+                "gemini-3.1-flash-lite": "Gemini 3.1 Flash Lite",
+                "gpt-oss-120b-medium": "GPT-OSS 120B (Medium)"
             }
             
             extra_models = {}
