@@ -30,9 +30,9 @@ class XAIProvider(Provider):
         except Exception:
             data.meta["balance_error"] = True
 
-        # Token usage + spend via invoice preview
+        # Token usage + spend via invoice preview (with a tight 3s timeout to prevent hanging when xAI backend is slow/broken)
         try:
-            r = self.http.get_json(f"{base}/postpaid/invoice/preview", headers)
+            r = self.http.get_json(f"{base}/postpaid/invoice/preview", headers, timeout=3)
             inv = r.get("coreInvoice", {})
             for line in inv.get("lines", []):
                 desc = line.get("description", "unknown")
