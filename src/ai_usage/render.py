@@ -15,11 +15,11 @@ from ai_usage.providers import registry
 PROVIDER_DISPLAY = {
     "deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai",
     "exa": "Exa", "x": "X API", "codex": "Codex",
-    "claude": "Claude Code", "nous": "Nous",
+    "claude": "Claude Code", "nous": "Nous", "google": "Google AI Studio",
 }
 
 TOKEN_PROVIDERS = {"deepseek", "xai"}
-SUBSCRIPTION_PROVIDERS = {"codex", "claude"}
+SUBSCRIPTION_PROVIDERS = {"codex", "claude", "google"}
 
 # ── Formatting helpers ──
 
@@ -129,8 +129,8 @@ def render_json(
         else:
             entry = {}
 
-        # Balance / spend (skip for Claude — has no prepaid balance)
-        if name != "claude":
+        # Balance / spend (skip for Claude/Google — have no prepaid balance)
+        if name not in ("claude", "google"):
             entry["balance"] = round(d.balance, 2) if d.balance is not None else None
             entry["period_spend"] = round(d.spent, 2) if d.spent is not None else None
 
@@ -141,6 +141,15 @@ def render_json(
                 entry["plan_type"] = cl.get("plan_type")
                 entry["session"] = cl.get("session")
                 entry["weekly"] = cl.get("weekly")
+            entry.pop("balance", None)
+            entry.pop("period_spend", None)
+
+        # Google: rate-limit quotas per model
+        if name == "google":
+            go = d.extra
+            if go:
+                entry["plan_type"] = go.get("plan_type")
+                entry["models"] = go.get("models")
             entry.pop("balance", None)
             entry.pop("period_spend", None)
 
@@ -326,6 +335,23 @@ def render_table(
             cd = fmt_countdown(weekly.get("resets_at"))
             if cd != "—":
                 lines.append(f"               Resets in {cd}")
+        lines.append("")
+
+    # ── Google detail section ──
+    if "google" in results and results["google"].extra:
+        go = results["google"].extra
+        lines.append(f"Google AI Studio Details  ({go.get('plan_type', 'unknown')})")
+        lines.append("─" * 48)
+        models_data = go.get("models", {})
+        for mkey, mval in models_data.items():
+            pct = mval["remaining_pct"]
+            bar_w = 30
+            filled = int(bar_w * pct / 100)
+            bar = "█" * filled + "░" * (bar_w - filled)
+            lines.append(f"  {mval['display_name']:<24} {pct:3.0f}% remaining  [{bar}]")
+            cd = fmt_countdown(mval.get("resets_at"))
+            if cd != "—":
+                lines.append(f"                           Resets in {cd}")
         lines.append("")
 
     # ── Nous detail section ──

@@ -28,6 +28,7 @@ import ai_usage.providers.x        # noqa: F401
 import ai_usage.providers.codex    # noqa: F401
 import ai_usage.providers.claude   # noqa: F401
 import ai_usage.providers.nous     # noqa: F401
+import ai_usage.providers.google   # noqa: F401
 
 ALL_PROVIDERS = provider_registry.all_names()
 
