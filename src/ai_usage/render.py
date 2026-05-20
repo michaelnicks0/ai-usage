@@ -289,10 +289,12 @@ def render_table(
     # 1. Claude Code
     if "claude" in results and results["claude"].extra:
         cl = results["claude"].extra
+        plan = cl.get("plan_type", "unknown").capitalize()
         sess = cl.get("session")
         if sess:
             sub_rows.append((
                 "Claude Code",
+                plan,
                 "Session",
                 f"{sess['remaining_pct']}%",
                 fmt_countdown(sess.get("resets_at"))
@@ -301,6 +303,7 @@ def render_table(
         if weekly:
             sub_rows.append((
                 "Claude Code",
+                plan,
                 "Weekly",
                 f"{weekly['remaining_pct']}%",
                 fmt_countdown(weekly.get("resets_at"))
@@ -309,10 +312,12 @@ def render_table(
     # 2. Codex
     if "codex" in results and results["codex"].extra:
         cx = results["codex"].extra
+        plan = cx.get("plan_type", "unknown").capitalize()
         sess = cx.get("session")
         if sess:
             sub_rows.append((
                 "Codex",
+                plan,
                 "Session",
                 f"{sess['remaining_pct']}%",
                 fmt_countdown(sess.get("resets_at"))
@@ -321,6 +326,7 @@ def render_table(
         if weekly:
             sub_rows.append((
                 "Codex",
+                plan,
                 "Weekly",
                 f"{weekly['remaining_pct']}%",
                 fmt_countdown(weekly.get("resets_at"))
@@ -329,30 +335,41 @@ def render_table(
     # 3. Google AI Studio
     if "google" in results and results["google"].extra:
         go = results["google"].extra
+        plan = go.get("plan_type", "unknown")
+        # Plan formatting
+        if plan == "Ultra 20x":
+            plan_str = "Ultra 20x"
+        elif plan == "unknown":
+            plan_str = "Unknown"
+        else:
+            plan_str = plan.capitalize()
+            
         models_data = go.get("models", {})
         for mkey, mval in models_data.items():
             sub_rows.append((
                 "Google AI Studio",
+                plan_str,
                 mval["display_name"],
                 f"{mval['remaining_pct']}%",
                 fmt_countdown(mval.get("resets_at"))
             ))
             
     if sub_rows:
-        headers = ["Subscription", "Resource", "Remaining", "Resets In"]
+        headers = ["Subscription", "Tier", "Resource", "Remaining", "Resets In"]
         
         # Compute column widths
         sub_w = max(len(r[0]) for r in [headers] + sub_rows)
-        res_w = max(len(r[1]) for r in [headers] + sub_rows)
-        rem_w = max(len(r[2]) for r in [headers] + sub_rows)
-        rst_w = max(len(r[3]) for r in [headers] + sub_rows)
+        tier_w = max(len(r[1]) for r in [headers] + sub_rows)
+        res_w = max(len(r[2]) for r in [headers] + sub_rows)
+        rem_w = max(len(r[3]) for r in [headers] + sub_rows)
+        rst_w = max(len(r[4]) for r in [headers] + sub_rows)
         
         lines.append("Subscription Quotas")
-        lines.append(f"{headers[0]:<{sub_w}}  {headers[1]:<{res_w}}  {headers[2]:>{rem_w}}  {headers[3]:>{rst_w}}")
-        lines.append(f"{'─' * sub_w}  {'─' * res_w}  {'─' * rem_w}  {'─' * rst_w}")
+        lines.append(f"{headers[0]:<{sub_w}}  {headers[1]:<{tier_w}}  {headers[2]:<{res_w}}  {headers[3]:>{rem_w}}  {headers[4]:>{rst_w}}")
+        lines.append(f"{'─' * sub_w}  {'─' * tier_w}  {'─' * res_w}  {'─' * rem_w}  {'─' * rst_w}")
         
         for r in sub_rows:
-            lines.append(f"{r[0]:<{sub_w}}  {r[1]:<{res_w}}  {r[2]:>{rem_w}}  {r[3]:>{rst_w}}")
+            lines.append(f"{r[0]:<{sub_w}}  {r[1]:<{tier_w}}  {r[2]:<{res_w}}  {r[3]:>{rem_w}}  {r[4]:>{rst_w}}")
         lines.append("")
 
     # ── Per-model section ──
