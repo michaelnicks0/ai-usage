@@ -14,12 +14,16 @@ $ ./ai-usage
    Codex       0 credits     55% · 2h41m                   —                  —            —              —
     Nous         $21.74         $20.00                    —                  —            —              —
 
-Codex Details  (plus)
-────────────────────────────────────────────────
-  Session      55% remaining  [████████████████░░░░░░░░░░░░░░]
-               Resets in 2h41m
-  Weekly       93% remaining  [███████████████████████████░░░]
-               Resets in 6d21h41m
+Subscription Quotas
+Subscription      Resource                 Remaining  Resets In
+────────────────  ───────────────────────  ─────────  ─────────
+Claude Code       Session                       100%         5h
+Claude Code       Weekly                         82%      4d12h
+Codex             Session                        95%        45m
+Codex             Weekly                         72%       2d2h
+Google AI Studio  Claude Opus 4.6 (Think)       100%      4h59m
+Google AI Studio  Gemini 3.1 Pro (High)         100%      4h59m
+Google AI Studio  Gemini 3.5 Flash (High)       100%      4h59m
 ```
 
 ## Usage
@@ -131,10 +135,13 @@ $ ./ai-usage -j -p nous
 | X API | ✅ console API | ✅ usage × pricing | — | — | — | — |
 | Codex | — | — | — | — | — | — |
 | Nous | ✅ OAuth API | ✅ subscription charge | — | — | — | — |
+| Google AI Studio | — | — | — | — | — | — |
 
 Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Queried via the Codex CLI app-server JSON-RPC interface.
 
 Nous Research uses subscription credits ($20+/mo) that deplete as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API. Stored in the `api` JSON branch (not `subscription`) since its credit model behaves like API credits.
+
+Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) that tracks remaining fractions per-model group. No token tracking or dollar balance. Queried via the Cloud Code fetchAvailableModels internal endpoint, using locally configured Google developer credentials.
 
 [Architecture diagram →](architecture.html) · [Data architecture →](data-architecture.html) · [Audit report →](AUDIT.html)
 
@@ -154,7 +161,8 @@ Nous Research uses subscription credits ($20+/mo) that deplete as you use manage
 | X API | Spend | `GET console.x.com/api/accounts/{id}/usage` + pricing | Session cookies |
 | Codex | Session/weekly | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (~/.codex/auth.json) |
 | Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (~/.claude/.credentials.json) |
-| Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json)
+| Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json) |
+| Google AI Studio | Model quotas | `POST cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth (~/.hermes/auth/google_oauth.json) |
 
 ## Setup
 
@@ -184,14 +192,16 @@ Claude Code reads local config files automatically (`~/.claude.json`, `~/.claude
 
 Nous reads the OAuth token from `~/.hermes/auth.json` (set up by `hermes model` or the Hermes setup wizard). No manual credential needed if you've already configured Nous Portal as a provider in Hermes.
 
+Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oauth.json` (written by the Hermes CLI when authenticating the `google-agy` provider). It handles refresh-token rotation and GCP project ID resolution under the hood dynamically.
+
 ### Credential refresh
 
-Three credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. All are browser session tokens, not API keys. The Nous OAuth token auto-refreshes via Hermes. All other credentials are long-lived.
+Three credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. All are browser session tokens, not API keys. The Nous and Google OAuth tokens auto-refresh via Hermes/Antigravity credentials. All other credentials are long-lived.
 
 **DeepSeek:** When token usage shows `—`, refresh:
 1. Open https://platform.deepseek.com/usage in Chrome
 2. Press F12 → Network tab → refresh the page
-3. Find any request to `platform.deepseek.com` → copy the `Authorization: Bearer *** header value
+3. Find any request to `platform.deepseek.com` → copy the `Authorization: Bearer ***` header value
 4. Update `DEEPSEEK_AUTH_TOKEN` in `~/.hermes/.env`
 
 **Exa:** When balance shows `—`, refresh:
