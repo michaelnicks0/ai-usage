@@ -78,6 +78,45 @@ class TestGoogleProvider:
     @patch("ai_usage.providers.google.os.path.exists")
     @patch("ai_usage.providers.google.open", new_callable=mock_open)
     @patch("urllib.request.urlopen")
+    def test_missing_remaining_fraction_is_zero(self, mock_urlopen, mock_file_open, mock_exists, mock_http, credentials):
+        """When remainingFraction is absent from quotaInfo, quota is exhausted (0%)."""
+        mock_exists.return_value = True
+        
+        # Not expired
+        auth_data = {
+            "access": "valid_ya29",
+            "expires": 9999999999999,
+            "refresh": "raw_refresh|project_id"
+        }
+        mock_file_open.return_value.read.return_value = json.dumps(auth_data)
+        
+        # API response with NO remainingFraction — only resetTime
+        mock_models_resp = MagicMock()
+        mock_models_resp.read.return_value = json.dumps({
+            "models": {
+                "gemini-3-flash-agent": {
+                    "displayName": "Gemini 3.5 Flash (High)",
+                    "quotaInfo": {
+                        "resetTime": "2026-05-21T01:10:58Z"
+                    }
+                }
+            }
+        }).encode()
+        
+        mock_models_cm = MagicMock()
+        mock_models_cm.__enter__.return_value = mock_models_resp
+        mock_urlopen.return_value = mock_models_cm
+        
+        provider = GoogleProvider(credentials, mock_http)
+        data = provider.fetch()
+        
+        model_info = data.extra["models"]["gemini-3-flash-agent"]
+        assert model_info["remaining_pct"] == 0  # exhausted, not 100
+        assert model_info["resets_at"] is not None  # reset time still parsed
+
+    @patch("ai_usage.providers.google.os.path.exists")
+    @patch("ai_usage.providers.google.open", new_callable=mock_open)
+    @patch("urllib.request.urlopen")
     def test_api_error_graceful(self, mock_urlopen, mock_file_open, mock_exists, mock_http, credentials):
         mock_exists.return_value = True
         

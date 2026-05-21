@@ -134,12 +134,17 @@ class GoogleProvider(Provider):
                 if mkey in models:
                     m = models[mkey]
                     quota = m.get("quotaInfo", {})
-                    fraction = quota.get("remainingFraction", 1.0)
-                    if isinstance(fraction, str):
-                        try:
-                            fraction = float(fraction)
-                        except ValueError:
-                            fraction = 1.0
+                    if "remainingFraction" in quota:
+                        fraction = quota["remainingFraction"]
+                        if isinstance(fraction, str):
+                            try:
+                                fraction = float(fraction)
+                            except ValueError:
+                                fraction = 1.0
+                    else:
+                        # When remainingFraction is absent but quotaInfo
+                        # exists, the quota is exhausted (0% remaining).
+                        fraction = 0.0
                             
                     pct = round(fraction * 100)
                     reset_str = quota.get("resetTime")
