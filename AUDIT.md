@@ -112,7 +112,7 @@ These ~7% are not closable without real external dependencies:
 ## Artifacts
 
 - **Commit:** `bdb109e` — v2.0: modular refactor
-- **Repo:** `~/repos/ai-usage/`
+- **Repo:** `~/repos/agents/ai-usage/`
 - **Entry point:** `~/.local/bin/ai-usage` (deployed, live-verified)
-- **Tests:** `cd ~/repos/ai-usage && .venv/bin/python -m pytest tests/ -v`
-- **Coverage:** `cd ~/repos/ai-usage && .venv/bin/python -m pytest tests/ --cov=ai_usage --cov-report=term`
+- **Tests:** `cd ~/repos/agents/ai-usage && .venv/bin/python -m pytest tests/ -v`
+- **Coverage:** `cd ~/repos/agents/ai-usage && .venv/bin/python -m pytest tests/ --cov=ai_usage --cov-report=term`

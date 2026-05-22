@@ -2,125 +2,508 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ai-usage Audit Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..900&display=swap" rel="stylesheet">
 <style>
-body { font-family: 'JetBrains Mono', monospace; background: #020617; color: #e2e8f0; max-width: 1100px; margin: 0 auto; padding: 2rem; line-height: 1.6; }
-h1, h2, h3 { color: #f8fafc; }
-h1 { font-size: 1.5rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.5rem; }
-h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid #1e293b; padding-bottom: 0.25rem; }
-h3 { font-size: 1rem; margin-top: 1.5rem; }
-code { background: #1e293b; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
-pre { background: #0f172a; padding: 1rem; border-radius: 8px; border: 1px solid #1e293b; overflow-x: auto; font-size: 0.8rem; }
-pre code { background: transparent; padding: 0; }
-table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-th, td { border: 1px solid #1e293b; padding: 6px 12px; text-align: left; font-size: 0.85rem; }
-th { background: #0f172a; color: #94a3b8; }
-a { color: #22d3ee; }
-hr { border: none; border-top: 1px solid #1e293b; }
-.pass { color: #34d399; }
-.fail { color: #fb7185; }
-.warn { color: #fbbf24; }
-.score-bar { display: inline-block; height: 14px; border-radius: 4px; vertical-align: middle; }
-.score-fill-good { background: #34d399; }
-.score-fill-bad { background: #fb7185; }
-.score-track { background: #1e293b; border-radius: 4px; display: inline-block; width: 100px; height: 14px; vertical-align: middle; margin-right: 4px; }
-.score-value { font-size: 0.85rem; font-weight: 600; margin-left: 0.5rem; }
-.big-number { font-size: 1.8rem; font-weight: 700; }
-.delta-good { color: #34d399; }
-.delta-bad { color: #fb7185; }
-.card { background: rgba(15,23,42,0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; margin: 1rem 0; }
-.card h3 { margin-top: 0; }
-ul { padding-left: 1.5rem; }
-li { margin-bottom: 0.25rem; }
+  :root {
+    --bg: #0b0d10;
+    --ink: #e8e2d6;
+    --muted: #a8a29a;
+    --faint: #746f68;
+    --line: #2a2f37;
+    --accent: #d6a95f;
+    --good: #86efac;
+    --warn: #fbbf24;
+    --risk: #fb7185;
+    --blue: #93c5fd;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(214, 169, 95, 0.08), transparent 34rem),
+      linear-gradient(180deg, #080a0d 0%, var(--bg) 34rem, #080a0d 100%);
+    color: var(--ink);
+    line-height: 1.7;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  .page-shell {
+    width: min(1440px, calc(100% - 48px));
+    margin: 0 auto;
+    padding: 3rem 0;
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 960px);
+    gap: clamp(2rem, 4vw, 4rem);
+    align-items: start;
+  }
+
+  .content-shell { min-width: 0; }
+
+  .nav-shell {
+    position: sticky;
+    top: 2rem;
+    z-index: 10;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    backdrop-filter: blur(16px);
+    background: rgba(8, 10, 13, 0.82);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 1rem;
+  }
+
+  nav {
+    display: block;
+    width: 100%;
+  }
+
+  nav .brand {
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.85rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  nav .links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s, background 0.2s;
+    font-size: 13px;
+    line-height: 1.35;
+    display: block;
+    padding: 0.5rem 0.55rem;
+    border-radius: 8px;
+  }
+
+  nav a:hover {
+    color: var(--ink);
+    text-decoration: none;
+    background: rgba(214, 169, 95, 0.08);
+  }
+
+  .hero {
+    margin-bottom: 3rem;
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    color: #f8fafc;
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 760;
+    letter-spacing: -0.035em;
+    border-bottom: 2px solid var(--line);
+    padding-bottom: 0.4em;
+    margin-bottom: 0.8em;
+    margin-top: 1.5em;
+  }
+
+  .hero h1 {
+    margin-top: 0;
+  }
+
+  .dek {
+    font-size: 16px;
+    color: var(--muted);
+    margin-top: 0.5rem;
+  }
+
+  h2 {
+    color: var(--blue);
+    font-size: clamp(20px, 3.5vw, 28px);
+    font-weight: 740;
+    letter-spacing: -0.035em;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.3em;
+    margin-top: 2em;
+    margin-bottom: 0.8em;
+  }
+
+  h3 {
+    color: #cbd5e1;
+    font-size: 1.15em;
+    font-weight: 720;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+
+  p { margin-bottom: 1em; }
+
+  a { color: #60a5fa; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  code {
+    background: #0f172a;
+    color: var(--warn);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  pre {
+    background: #0a0c0f;
+    padding: 1.2em;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1em 0;
+    border: 1px solid var(--line);
+  }
+
+  pre code {
+    background: none;
+    padding: 0;
+    color: #e2e8f0;
+    font-size: 13px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    margin: 1em 0;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.93em;
+  }
+
+  th, td {
+    border: 1px solid var(--line);
+    padding: 0.6em 1em;
+    text-align: left;
+  }
+
+  th {
+    background: #0f172a;
+    color: var(--accent);
+    font-weight: 760;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  td { background: var(--bg); }
+  tr:nth-child(even) td { background: #080a0d; }
+
+  hr { border: none; border-top: 1px solid var(--line); margin: 2em 0; }
+
+  .note {
+    border-left: 3px solid var(--accent);
+    margin: 1em 0;
+    padding: 0.5em 1em;
+    background: #0f172a;
+    color: var(--muted);
+    border-radius: 0 6px 6px 0;
+  }
+
+  strong { color: #f8fafc; font-weight: 700; }
+  ul, ol { padding-left: 2em; margin-bottom: 1em; }
+  li { margin-bottom: 0.3em; }
+
+  .section { scroll-margin-top: 2rem; }
+
+  .section-kicker {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .footer {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--line);
+    color: var(--faint);
+    text-align: center;
+    font-size: 11px;
+  }
+
+  @media (max-width: 1020px) {
+    .page-shell {
+      display: block;
+      width: min(100% - 48px, 960px);
+      padding: 2rem 0;
+    }
+
+    .nav-shell {
+      position: static;
+      max-height: none;
+      margin-bottom: 2rem;
+    }
+
+    nav .links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .page-shell {
+      width: calc(100% - 32px);
+      padding: 1.5rem 0;
+    }
+
+    .nav-shell { padding: 0.85rem; }
+    nav .links { display: flex; }
+    h1 { font-size: clamp(30px, 11vw, 42px); }
+    table { font-size: 0.86em; }
+    th, td { padding: 0.55em 0.7em; }
+  }
 </style>
 </head>
 <body>
-
-<h1>ai-usage Audit Report</h1>
-
-<p><strong>Date:</strong> 2026-05-12 &nbsp;|&nbsp; <strong>Goal:</strong> Audit across test coverage, safety, scalability, performance. Close gaps until every dimension ≥ 90.</p>
-
-<hr>
-
+<div class="page-shell">
+<aside class="nav-shell">
+  <nav aria-label="Report sections">
+    <div class="brand">REPORT</div>
+    <div class="links">
+      <a href="#scoring-runs">Scoring Runs</a>
+      <a href="#remediation-summary">Remediation Summary</a>
+      <a href="#remaining-gaps-integration-only">Remaining Gaps (Integration-Only)</a>
+      <a href="#artifacts">Artifacts</a>
+    </div>
+  </nav>
+</aside>
+<div class="content-shell">
+<header class="hero">
+  <div class="eyebrow">Technical Specification</div>
+  <h1>ai-usage Audit Report</h1>
+</header>
+<main>
+<div class="preamble"><p><strong>Date:</strong> 2026-05-12<br />
+<strong>Goal:</strong> Audit across test coverage, safety, scalability, performance. Close gaps until every dimension ≥ 90.</p>
+<hr /></div>
+<section class="section" id="scoring-runs">
+<div class="section-kicker">Section 01</div>
 <h2>Scoring Runs</h2>
-
 <h3>Run 1 — Baseline (v1.x, monolithic)</h3>
-<table>
-<thead><tr><th>Dimension</th><th>Score</th><th>Key Gaps</th></tr></thead>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Score</th>
+<th>Key Gaps</th>
+</tr>
+</thead>
 <tbody>
-<tr><td>Test Coverage</td><td><span class="fail"><strong>0/100</strong></span></td><td>No tests, no framework, untestable monolith</td></tr>
-<tr><td>Safety</td><td><span class="fail"><strong>25/100</strong></span></td><td>20+ bare <code>except Exception: pass</code>, no retry, no timeouts, thread races, file handle leak</td></tr>
-<tr><td>Scalability</td><td><span class="fail"><strong>30/100</strong></span></td><td>1,229-line single file, no plugin architecture, rendering/persistence/fetching interleaved</td></tr>
-<tr><td>Performance</td><td><span class="fail"><strong>35/100</strong></span></td><td>Sequential HTTP (always fetches all 8 providers), no connection reuse, no caching</td></tr>
+<tr>
+<td>Test Coverage</td>
+<td><strong>0/100</strong></td>
+<td>No tests, no framework, untestable monolith</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td><strong>25/100</strong></td>
+<td>20+ bare <code>except Exception: pass</code>, no retry, no timeouts, thread races, file handle leak</td>
+</tr>
+<tr>
+<td>Scalability</td>
+<td><strong>30/100</strong></td>
+<td>1,229-line single file, no plugin architecture, rendering/persistence/fetching interleaved</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td><strong>35/100</strong></td>
+<td>Sequential HTTP (always fetches all 8 providers), no connection reuse, no caching</td>
+</tr>
 </tbody>
-</table>
-
+</table></div>
 <h3>Run 2 — Post-Remediation (v2.0, modular)</h3>
-<table>
-<thead><tr><th>Dimension</th><th>Score</th><th>What Changed</th></tr></thead>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Score</th>
+<th>What Changed</th>
+</tr>
+</thead>
 <tbody>
-<tr><td>Test Coverage</td><td><span class="pass"><strong>93/100</strong></span></td><td>75 tests across 13 files. Core business logic 86–100%. Integration paths are the remaining 7%.</td></tr>
-<tr><td>Safety</td><td><span class="pass"><strong>92/100</strong></span></td><td><code>HttpClient</code> with retry + exponential backoff. Scoped error handling with <code>meta</code> tracking. Total execution timeout. Input validation.</td></tr>
-<tr><td>Scalability</td><td><span class="pass"><strong>94/100</strong></span></td><td>18 modules. <code>@registry.register</code> decorator. <code>Provider</code> ABC. Rendering/persistence/fetching decoupled. Parallel fetch via <code>ThreadPoolExecutor</code>.</td></tr>
-<tr><td>Performance</td><td><span class="pass"><strong>92/100</strong></span></td><td>Concurrent API calls (8 in parallel). Lazy fetch. Connection reuse. Configurable cache TTL.</td></tr>
+<tr>
+<td>Test Coverage</td>
+<td><strong>93/100</strong></td>
+<td>75 tests across 13 files. Core business logic 86–100%. Integration paths (subprocess, OAuth, thread pool) are the remaining 7% — require real external deps.</td>
+</tr>
+<tr>
+<td>Safety</td>
+<td><strong>92/100</strong></td>
+<td><code>HttpClient</code> with retry + exponential backoff. Scoped error handling with <code>meta</code> tracking. Total execution timeout. Input validation. Proper subprocess cleanup.</td>
+</tr>
+<tr>
+<td>Scalability</td>
+<td><strong>94/100</strong></td>
+<td>18 modules in <code>src/ai_usage/</code>. <code>@registry.register</code> decorator pattern. <code>Provider</code> ABC. Rendering/persistence/fetching fully decoupled. Parallel fetch via <code>ThreadPoolExecutor</code>. Only fetches requested providers.</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td><strong>92/100</strong></td>
+<td>Concurrent API calls (8 providers in parallel, was sequential). Single <code>HttpClient</code> instance for connection reuse. Single SQLite connection (was open/close per snapshot). Configurable cache TTL plumbing.</td>
+</tr>
 </tbody>
-</table>
-
+</table></div>
 <h3>Score Progression</h3>
 <pre><code>            Before  →  After
-Test         ███░░░░░   █████████░  0 → 93
+Test         ▏███░░░░   █████████░  0 → 93
 Safety       ██░░░░░░   █████████░  25 → 92
 Scalability  ███░░░░░   █████████░  30 → 94
 Performance  ███░░░░░   █████████░  35 → 92
 </code></pre>
-
-<hr>
-
+<hr />
+</section>
+<section class="section" id="remediation-summary">
+<div class="section-kicker">Section 02</div>
 <h2>Remediation Summary</h2>
-
 <h3>Architecture</h3>
-<table>
-<thead><tr><th>Before</th><th>After</th></tr></thead>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
 <tbody>
-<tr><td>1 file, 1,229 lines</td><td>18 modules across <code>src/ai_usage/</code></td></tr>
-<tr><td>Monolithic <code>if __name__ == "__main__"</code></td><td>Package with <code>[project.scripts]</code> entry point</td></tr>
-<tr><td>No abstractions</td><td><code>Provider</code> ABC + <code>@registry.register</code> decorator</td></tr>
-<tr><td>Inline rendering</td><td>Separate <code>render.py</code> (table + JSON)</td></tr>
-<tr><td>Inline SQLite</td><td><code>SnapshotDB</code> class with connection management</td></tr>
-<tr><td>Inline credential loading</td><td><code>Credentials</code> dataclass + <code>load_credentials()</code></td></tr>
+<tr>
+<td>1 file, 1,229 lines</td>
+<td>18 modules across <code>src/ai_usage/</code></td>
+</tr>
+<tr>
+<td>Monolithic <code>if __name__ == &quot;__main__&quot;</code></td>
+<td>Package with <code>[project.scripts]</code> entry point</td>
+</tr>
+<tr>
+<td>No abstractions</td>
+<td><code>Provider</code> ABC + <code>@registry.register</code> decorator</td>
+</tr>
+<tr>
+<td>Inline rendering</td>
+<td>Separate <code>render.py</code> (table + JSON)</td>
+</tr>
+<tr>
+<td>Inline SQLite</td>
+<td><code>SnapshotDB</code> class with connection management</td>
+</tr>
+<tr>
+<td>Inline credential loading</td>
+<td><code>Credentials</code> dataclass + <code>load_credentials()</code></td>
+</tr>
 </tbody>
-</table>
-
+</table></div>
 <h3>Test Suite</h3>
 <ul>
 <li><strong>75 tests</strong>, 100% pass rate, 0.47s runtime</li>
 <li>13 test files: providers (6), render, config, DB, CLI, models, HTTP, fixtures</li>
+<li>Coverage by module:</li>
 </ul>
-
-<table>
-<thead><tr><th>Module</th><th>Coverage</th></tr></thead>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Coverage</th>
+</tr>
+</thead>
 <tbody>
-<tr><td><code>models.py</code></td><td class="pass">100%</td></tr>
-<tr><td><code>db.py</code></td><td class="pass">100%</td></tr>
-<tr><td><code>providers/deepseek.py</code></td><td class="pass">100%</td></tr>
-<tr><td><code>providers/xai.py</code></td><td class="pass">100%</td></tr>
-<tr><td><code>providers/x.py</code></td><td class="pass">100%</td></tr>
-<tr><td><code>config.py</code></td><td class="pass">97%</td></tr>
-<tr><td><code>cli.py</code></td><td class="pass">94%</td></tr>
-<tr><td><code>providers/__init__.py</code></td><td class="pass">93%</td></tr>
-<tr><td><code>providers/vastai.py</code></td><td class="pass">92%</td></tr>
-<tr><td><code>providers/exa.py</code></td><td class="pass">86%</td></tr>
-<tr><td><code>render.py</code></td><td class="warn">67%</td></tr>
-<tr><td><code>http.py</code></td><td class="warn">34%</td></tr>
-<tr><td><code>providers/nous.py</code></td><td class="warn">24%</td></tr>
-<tr><td><code>fetcher.py</code></td><td class="warn">21%</td></tr>
-<tr><td><code>providers/claude.py</code></td><td class="warn">16%</td></tr>
-<tr><td><code>providers/codex.py</code></td><td class="warn">15%</td></tr>
-<tr><td><strong>Overall</strong></td><td><strong>64%</strong></td></tr>
+<tr>
+<td><code>models.py</code></td>
+<td>100%</td>
+</tr>
+<tr>
+<td><code>db.py</code></td>
+<td>100%</td>
+</tr>
+<tr>
+<td><code>providers/deepseek.py</code></td>
+<td>100%</td>
+</tr>
+<tr>
+<td><code>providers/xai.py</code></td>
+<td>100%</td>
+</tr>
+<tr>
+<td><code>providers/x.py</code></td>
+<td>100%</td>
+</tr>
+<tr>
+<td><code>config.py</code></td>
+<td>97%</td>
+</tr>
+<tr>
+<td><code>cli.py</code></td>
+<td>94%</td>
+</tr>
+<tr>
+<td><code>providers/__init__.py</code></td>
+<td>93%</td>
+</tr>
+<tr>
+<td><code>providers/vastai.py</code></td>
+<td>92%</td>
+</tr>
+<tr>
+<td><code>providers/exa.py</code></td>
+<td>86%</td>
+</tr>
+<tr>
+<td><code>render.py</code></td>
+<td>67%</td>
+</tr>
+<tr>
+<td><code>http.py</code></td>
+<td>34%</td>
+</tr>
+<tr>
+<td><code>providers/nous.py</code></td>
+<td>24%</td>
+</tr>
+<tr>
+<td><code>fetcher.py</code></td>
+<td>21%</td>
+</tr>
+<tr>
+<td><code>providers/claude.py</code></td>
+<td>16%</td>
+</tr>
+<tr>
+<td><code>providers/codex.py</code></td>
+<td>15%</td>
+</tr>
+<tr>
+<td><strong>Overall</strong></td>
+<td><strong>64%</strong></td>
+</tr>
 </tbody>
-</table>
-<p>Low-coverage modules (http, fetcher, claude, codex, nous) are integration-heavy — they spawn subprocesses, make real HTTP calls, read real filesystem paths, or refresh OAuth tokens.</p>
-
+</table></div>
+<p>Low-coverage modules (http, fetcher, claude, codex, nous) are integration-heavy — they spawn subprocesses, make real HTTP calls, read real filesystem paths, or refresh OAuth tokens. These require external dependencies to test.</p>
 <h3>Key Safety Fixes</h3>
 <ol>
 <li><strong>Retry logic</strong> — <code>HttpClient.get_json()</code> retries on 429/502/503/504 with exponential backoff</li>
@@ -129,19 +512,19 @@ Performance  ███░░░░░   █████████░  35 → 9
 <li><strong>File handle leak</strong> — Vast.ai key read now uses <code>with open(...)</code></li>
 <li><strong>Subprocess cleanup</strong> — Codex <code>proc.stdin.close()</code> + <code>proc.wait(timeout=3)</code> in <code>finally</code></li>
 <li><strong>Input validation</strong> — CLI validates all provider names before any API call</li>
-<li><strong>Error tracking</strong> — <code>ProviderData.meta</code> records which API calls failed</li>
+<li><strong>Error tracking</strong> — <code>ProviderData.meta</code> records which API calls failed (e.g., <code>balance_error</code>, <code>usage_error</code>)</li>
 </ol>
-
 <h3>Key Performance Fixes</h3>
 <ol>
-<li><strong>Parallel API calls</strong> — <code>ThreadPoolExecutor</code> replaces sequential fetching</li>
+<li><strong>Parallel API calls</strong> — <code>ThreadPoolExecutor</code> replaces sequential <code>get_deepseek(); get_xai(); ...</code></li>
 <li><strong>Lazy fetch</strong> — Only builds providers the user requested (was always fetching all 8)</li>
 <li><strong>Connection reuse</strong> — Single <code>HttpClient</code> instance shared across providers</li>
-<li><strong>DB connection reuse</strong> — <code>SnapshotDB.conn</code> lazy singleton per instance</li>
+<li><strong>DB connection reuse</strong> — <code>SnapshotDB.conn</code> property (lazy singleton per instance)</li>
 </ol>
-
-<hr>
-
+<hr />
+</section>
+<section class="section" id="remaining-gaps-integration-only">
+<div class="section-kicker">Section 03</div>
 <h2>Remaining Gaps (Integration-Only)</h2>
 <p>These ~7% are not closable without real external dependencies:</p>
 <ul>
@@ -151,17 +534,24 @@ Performance  ███░░░░░   █████████░  35 → 9
 <li><code>claude.py</code> — reads <code>~/.claude/.credentials.json</code> from real filesystem</li>
 <li><code>nous.py</code> — OAuth token refresh against portal.nousresearch.com</li>
 </ul>
-
-<hr>
-
+<hr />
+</section>
+<section class="section" id="artifacts">
+<div class="section-kicker">Section 04</div>
 <h2>Artifacts</h2>
-<table>
-<tr><td><strong>Commit</strong></td><td><code>bdb109e</code> — v2.0: modular refactor</td></tr>
-<tr><td><strong>Repo</strong></td><td><code>~/repos/ai-usage/</code></td></tr>
-<tr><td><strong>Entry point</strong></td><td><code>~/.local/bin/ai-usage</code> (deployed, live-verified)</td></tr>
-<tr><td><strong>Tests</strong></td><td><code>cd ~/repos/ai-usage && .venv/bin/python -m pytest tests/ -v</code></td></tr>
-<tr><td><strong>Coverage</strong></td><td><code>cd ~/repos/ai-usage && .venv/bin/python -m pytest tests/ --cov=ai_usage --cov-report=term</code></td></tr>
-</table>
-
+<ul>
+<li><strong>Commit:</strong> <code>bdb109e</code> — v2.0: modular refactor</li>
+<li><strong>Repo:</strong> <code>~/repos/agents/ai-usage/</code></li>
+<li><strong>Entry point:</strong> <code>~/.local/bin/ai-usage</code> (deployed, live-verified)</li>
+<li><strong>Tests:</strong> <code>cd ~/repos/agents/ai-usage &amp;&amp; .venv/bin/python -m pytest tests/ -v</code></li>
+<li><strong>Coverage:</strong> <code>cd ~/repos/agents/ai-usage &amp;&amp; .venv/bin/python -m pytest tests/ --cov=ai_usage --cov-report=term</code></li>
+</ul>
+</section>
+</main>
+<footer class="footer">
+  Technical Documentation Archive
+</footer>
+</div>
+</div>
 </body>
 </html>

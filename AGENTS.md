@@ -56,7 +56,7 @@ src/ai_usage/
 ### Testing
 
 ```bash
-cd ~/repos/ai-usage
+cd ~/repos/agents/ai-usage
 .venv/bin/python -m pytest tests/ -v --cov=ai_usage
 ```
 
