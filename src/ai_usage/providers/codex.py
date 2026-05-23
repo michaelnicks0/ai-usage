@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import threading
 import time
@@ -10,6 +12,29 @@ from collections import OrderedDict
 
 from ai_usage.models import ProviderData
 from ai_usage.providers import Provider, registry
+
+
+def _node_version_key(version: str) -> tuple[int, ...]:
+    """Sort nvm version names like v20.11.1 semantically."""
+    return tuple(int(part) for part in version.lstrip("v").split(".") if part.isdigit())
+
+
+def _resolve_node() -> str | None:
+    """Find the node binary, resolving through nvm if not on PATH."""
+    node_path = shutil.which("node")
+    if node_path:
+        return node_path
+
+    nvm_dir = os.path.expanduser("~/.nvm")
+    versions_dir = os.path.join(nvm_dir, "versions", "node")
+    if os.path.isdir(versions_dir):
+        versions = sorted(os.listdir(versions_dir), key=_node_version_key, reverse=True)
+        for v in versions:
+            node_bin = os.path.join(versions_dir, v, "bin", "node")
+            if os.path.isfile(node_bin):
+                return node_bin
+
+    return None
 
 
 @registry.register
@@ -21,6 +46,13 @@ class CodexProvider(Provider):
     def fetch(self) -> ProviderData:
         data = ProviderData(models=OrderedDict())
 
+        # Resolve node binary (needed for codex CLI)
+        node_bin = _resolve_node()
+        env = os.environ.copy()
+        if node_bin:
+            node_dir = os.path.dirname(node_bin)
+            env["PATH"] = node_dir + os.pathsep + env.get("PATH", "")
+
         try:
             proc = subprocess.Popen(
                 ["codex", "app-server"],
@@ -29,6 +61,7 @@ class CodexProvider(Provider):
                 stderr=subprocess.DEVNULL,
                 text=True,
                 bufsize=1,
+                env=env,
             )
         except FileNotFoundError:
             return data

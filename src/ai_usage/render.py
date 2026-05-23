@@ -291,6 +291,7 @@ def render_table(
         cl = results["claude"].extra
         plan = cl.get("plan_type", "unknown").capitalize()
         sess = cl.get("session")
+        weekly = cl.get("weekly")
         if sess:
             sub_rows.append((
                 "Claude Code",
@@ -299,7 +300,6 @@ def render_table(
                 f"{sess['remaining_pct']}%",
                 fmt_countdown(sess.get("resets_at"))
             ))
-        weekly = cl.get("weekly")
         if weekly:
             sub_rows.append((
                 "Claude Code",
@@ -307,6 +307,17 @@ def render_table(
                 "Weekly",
                 f"{weekly['remaining_pct']}%",
                 fmt_countdown(weekly.get("resets_at"))
+            ))
+        if not sess and not weekly:
+            reset_label = (
+                "403 blocked" if results["claude"].meta.get("oauth_error") else "unavailable"
+            )
+            sub_rows.append((
+                "Claude Code",
+                plan,
+                "Rate Limits",
+                "—",
+                reset_label
             ))
             
     # 2. Codex
