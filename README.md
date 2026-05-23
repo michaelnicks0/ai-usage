@@ -143,7 +143,7 @@ Nous Research uses subscription credits ($20+/mo) that deplete as you use manage
 
 Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) that tracks remaining fractions per-model group. No token tracking or dollar balance. Queried via the Cloud Code fetchAvailableModels internal endpoint, using locally configured Google developer credentials.
 
-[Architecture diagram →](architecture.html) · [Data architecture →](data-architecture.html) · [Audit report →](AUDIT.html)
+[Architecture diagram →](architecture.html) · [Data architecture →](data-architecture.html) · [Audit report →](AUDIT.md)
 
 ## API endpoints
 

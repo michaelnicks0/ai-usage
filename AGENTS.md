@@ -7,6 +7,7 @@ Guidance for AI coding agents working in this repo. Focused on what an agent wou
 - [`README.md`](README.md) — what this tool does, provider table, API endpoints, credential setup
 - [`AUDIT.md`](AUDIT.md) — code quality audit (test coverage, safety, performance)
 - [`architecture.html`](architecture.html) — visual architecture diagram
+- [`data-architecture.html`](data-architecture.html) — visual data architecture diagram
 
 ## What this is
 
