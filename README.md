@@ -1,8 +1,19 @@
 # ai-usage
 
-Cross-provider balance + token usage — one command.
+Cross-provider balance, spend, subscription quota, and token usage — one command.
 
-```
+## Status
+
+| Field | Value |
+|---|---|
+| Runtime | Python CLI, `ai_usage.cli:main` |
+| Package root | `src/ai_usage/` |
+| Canonical architecture docs | [`docs/architecture.md`](docs/architecture.md), [`docs/data-architecture.md`](docs/data-architecture.md) |
+| Legacy rendered companions | [`architecture.html`](architecture.html), [`data-architecture.html`](data-architecture.html) |
+
+## Example output
+
+```text
 $ ./ai-usage
  Provider       Balance         Spend       Tokens In (Hit)  Tokens In (Miss)  Tokens Out  Tokens Total
 ─────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -134,16 +145,19 @@ $ ./ai-usage -j -p nous
 | Exa | ✅ dashboard session | ✅ admin API | — | — | — | — |
 | X API | ✅ console API | ✅ usage × pricing | — | — | — | — |
 | Codex | — | — | — | — | — | — |
+| Claude Code | — | — | Local/OAuth usage | Local/OAuth usage | Local/OAuth usage | Provider-specific |
 | Nous | ✅ OAuth API | ✅ subscription charge | — | — | — | — |
 | Google AI Studio | — | — | — | — | — | — |
 
 Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Queried via the Codex CLI app-server JSON-RPC interface.
 
+Claude Code uses subscription/rate-limit windows and local/OAuth usage state. Its model details do not map cleanly to the generic dollar-balance rows.
+
 Nous Research uses subscription credits ($20+/mo) that deplete as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API. Stored in the `api` JSON branch (not `subscription`) since its credit model behaves like API credits.
 
 Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) that tracks remaining fractions per-model group. No token tracking or dollar balance. Queried via the Cloud Code fetchAvailableModels internal endpoint, using locally configured Google developer credentials.
 
-[Architecture diagram →](architecture.html) · [Data architecture →](data-architecture.html) · [Audit report →](AUDIT.md)
+[Architecture](docs/architecture.md) · [Data architecture](docs/data-architecture.md) · [Audit report](AUDIT.md) · Legacy renders: [architecture.html](architecture.html), [data-architecture.html](data-architecture.html)
 
 ## API endpoints
 
