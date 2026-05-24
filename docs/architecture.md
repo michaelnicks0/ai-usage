@@ -18,35 +18,35 @@ This document describes the current source-level architecture. The HTML files in
 
 ```mermaid
 flowchart TB
-    operator["Operator"]:::actor --> cli["CLI\nai_usage.cli:main"]:::process
+    operator["Operator"]:::actor --> cli["CLI<br/>ai_usage.cli:main"]:::process
 
-    cli --> config["Credential loader\nconfig.load_credentials"]:::process
-    cli --> registry["Provider registry\nproviders.registry"]:::process
-    cli --> fetcher["Fetch orchestrator\nfetcher.fetch_all"]:::process
-    cli --> db["SnapshotDB\nSQLite history"]:::datastore
-    cli --> render["Renderer\ntable / JSON / history"]:::process
+    cli --> config["Credential loader<br/>config.load_credentials"]:::process
+    cli --> registry["Provider registry<br/>providers.registry"]:::process
+    cli --> fetcher["Fetch orchestrator<br/>fetcher.fetch_all"]:::process
+    cli --> db["SnapshotDB<br/>SQLite history"]:::datastore
+    cli --> render["Renderer<br/>table / JSON / history"]:::process
 
     config --> hermesEnv[("~/.hermes/.env")]:::datastore
     config --> vastKey[("~/.config/vastai/vast_api_key")]:::datastore
     config --> nousAuth[("~/.hermes/auth.json")]:::datastore
 
-    registry --> providers["Provider modules\ndeepseek, xai, vastai, exa, x, codex, claude, nous, google"]:::process
-    fetcher --> http["HttpClient\ntimeout + retry"]:::process
+    registry --> providers["Provider modules<br/>deepseek, xai, vastai, exa, x, codex, claude, nous, google"]:::process
+    fetcher --> http["HttpClient<br/>timeout + retry"]:::process
     fetcher --> providers
     providers --> http
 
     http --> providerApis["External provider APIs"]:::external
-    providers --> localCLIs["Local CLIs / files\nCodex, Claude, Google OAuth"]:::external
+    providers --> localCLIs["Local CLIs / files<br/>Codex, Claude, Google OAuth"]:::external
 
-    providers --> normalized["ProviderData\nbalance, spend, tokens, models, extra, meta"]:::datastore
+    providers --> normalized["ProviderData<br/>balance, spend, tokens, models, extra, meta"]:::datastore
     normalized --> db
     normalized --> render
     render --> terminal["Terminal output"]:::actor
 
-    classDef actor fill:#dbeafe,stroke:#2563eb,color:#111827;
-    classDef process fill:#dcfce7,stroke:#16a34a,color:#111827;
-    classDef datastore fill:#fef3c7,stroke:#d97706,color:#111827;
-    classDef external fill:#f3e8ff,stroke:#9333ea,color:#111827;
+    classDef actor fill:#dbeafe,stroke:#2563eb,color:#111827,stroke-width:1.5px;
+    classDef process fill:#dcfce7,stroke:#16a34a,color:#111827,stroke-width:1.5px;
+    classDef datastore fill:#fef3c7,stroke:#d97706,color:#111827,stroke-width:1.5px;
+    classDef external fill:#f3e8ff,stroke:#9333ea,color:#111827,stroke-width:1.5px;
 ```
 
 ## Live-fetch flow

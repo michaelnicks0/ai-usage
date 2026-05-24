@@ -13,11 +13,11 @@ Provider modules fetch provider-specific balance, billing, quota, or usage paylo
 
 ```mermaid
 flowchart LR
-    providerApis["Provider APIs\nHTTP / local CLI / local files"]:::external --> providerModules["Provider modules\nfetch()"]:::process
+    providerApis["Provider APIs<br/>HTTP / local CLI / local files"]:::external --> providerModules["Provider modules<br/>fetch()"]:::process
     providerModules --> providerData["ProviderData"]:::datastore
     providerData --> tableOutput["Table output"]:::actor
     providerData --> jsonOutput["JSON output"]:::actor
-    providerData --> snapshotDb[("SQLite history\nSnapshotDB")]:::datastore
+    providerData --> snapshotDb[("SQLite history<br/>SnapshotDB")]:::datastore
 
     subgraph normalizedShape["Normalized shape"]
         balance["balance: float | None"]:::datastore
@@ -35,10 +35,10 @@ flowchart LR
     providerData --> extra
     providerData --> meta
 
-    classDef actor fill:#dbeafe,stroke:#2563eb,color:#111827;
-    classDef process fill:#dcfce7,stroke:#16a34a,color:#111827;
-    classDef datastore fill:#fef3c7,stroke:#d97706,color:#111827;
-    classDef external fill:#f3e8ff,stroke:#9333ea,color:#111827;
+    classDef actor fill:#dbeafe,stroke:#2563eb,color:#111827,stroke-width:1.5px;
+    classDef process fill:#dcfce7,stroke:#16a34a,color:#111827,stroke-width:1.5px;
+    classDef datastore fill:#fef3c7,stroke:#d97706,color:#111827,stroke-width:1.5px;
+    classDef external fill:#f3e8ff,stroke:#9333ea,color:#111827,stroke-width:1.5px;
 ```
 
 ## Provider-to-field mapping
@@ -60,15 +60,15 @@ flowchart LR
 ```mermaid
 flowchart TB
     rawUsage["Raw usage lines / token fields"]:::external --> tokenData["TokenData"]:::datastore
-    tokenData --> cached["cached\ncache-hit input tokens"]:::datastore
-    tokenData --> input["input\ncache-miss input tokens"]:::datastore
-    tokenData --> output["output\ncompletion tokens"]:::datastore
-    tokenData --> total["total\ninput + cached + output"]:::process
-    tokenData --> percentages["hit_pct / miss_pct\ncomputed over input tokens"]:::process
+    tokenData --> cached["cached<br/>cache-hit input tokens"]:::datastore
+    tokenData --> input["input<br/>cache-miss input tokens"]:::datastore
+    tokenData --> output["output<br/>completion tokens"]:::datastore
+    tokenData --> total["total<br/>input + cached + output"]:::process
+    tokenData --> percentages["hit_pct / miss_pct<br/>computed over input tokens"]:::process
 
-    classDef process fill:#dcfce7,stroke:#16a34a,color:#111827;
-    classDef datastore fill:#fef3c7,stroke:#d97706,color:#111827;
-    classDef external fill:#f3e8ff,stroke:#9333ea,color:#111827;
+    classDef process fill:#dcfce7,stroke:#16a34a,color:#111827,stroke-width:1.5px;
+    classDef datastore fill:#fef3c7,stroke:#d97706,color:#111827,stroke-width:1.5px;
+    classDef external fill:#f3e8ff,stroke:#9333ea,color:#111827,stroke-width:1.5px;
 ```
 
 ## History flow
