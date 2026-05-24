@@ -51,7 +51,7 @@ flowchart LR
 | Exa | Dashboard balance and admin usage APIs | `balance`, `spent`; tokens are not applicable |
 | X API | Console credits and usage APIs | `balance`, calculated `spent`; tokens are not applicable |
 | Codex | Codex app-server rate-limit JSON-RPC | `extra` quota rows; dollar/token fields are not applicable |
-| Claude Code | OAuth usage endpoint and local usage files | `extra` quota rows and provider-specific model details |
+| Claude Code | OAuth usage endpoint, local usage files, and Claude CLI refresh | `extra` quota rows and provider-specific model details; `meta.token_refreshed`, `meta.oauth_retry_status`, and `meta.refresh_error` describe refresh behavior when needed |
 | Nous | Portal OAuth account/subscription endpoints | `balance`/credits plus subscription `extra` |
 | Google AI Studio | Cloud Code available-models/quota endpoint | `extra` model quota rows |
 

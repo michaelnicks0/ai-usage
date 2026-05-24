@@ -4,11 +4,20 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import time
 from collections import OrderedDict
-from datetime import datetime, timezone
+from datetime import datetime
+from urllib.error import HTTPError
 
 from ai_usage.models import ProviderData, TokenData
 from ai_usage.providers import Provider, registry
+
+
+CLAUDE_USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
+CLAUDE_REFRESH_THRESHOLD_MS = 2 * 60 * 60 * 1000
+CLAUDE_REFRESH_TIMEOUT_SECONDS = 90
+CLAUDE_REFRESH_AUTH_STATUSES = {401, 403, 429}
 
 
 @registry.register
@@ -16,6 +25,101 @@ class ClaudeProvider(Provider):
     name = "claude"
     display_name = "Claude Code"
     is_subscription = True
+
+    def _load_oauth(self, path: str) -> dict:
+        with open(path) as f:
+            return json.load(f).get("claudeAiOauth", {})
+
+    def _token_needs_refresh(self, creds: dict) -> bool:
+        expires_at = creds.get("expiresAt")
+        if expires_at is None:
+            return False
+        try:
+            expires_ms = int(expires_at)
+        except (TypeError, ValueError):
+            return False
+        return expires_ms - int(time.time() * 1000) <= CLAUDE_REFRESH_THRESHOLD_MS
+
+    def _refresh_token(self, data: ProviderData) -> bool:
+        try:
+            result = subprocess.run(
+                [
+                    "claude",
+                    "-p",
+                    "ping",
+                    "--effort",
+                    "low",
+                    "--max-turns",
+                    "1",
+                    "--output-format",
+                    "json",
+                    "--no-session-persistence",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=CLAUDE_REFRESH_TIMEOUT_SECONDS,
+                check=False,
+            )
+        except FileNotFoundError:
+            data.meta["refresh_error"] = "claude not found"
+            return False
+        except subprocess.TimeoutExpired:
+            data.meta["refresh_error"] = "timeout"
+            return False
+        except Exception as exc:
+            data.meta["refresh_error"] = str(exc) or exc.__class__.__name__
+            return False
+
+        if result.returncode != 0:
+            data.meta["refresh_error"] = f"exit {result.returncode}"
+            return False
+
+        data.meta["token_refreshed"] = True
+        data.meta.pop("refresh_error", None)
+        return True
+
+    def _fetch_usage(self, creds: dict) -> dict:
+        token = creds.get("accessToken", "")
+        if not token:
+            return {}
+        usage = self.http.get_json(
+            CLAUDE_USAGE_URL,
+            {
+                "Authorization": f"Bearer {token}",
+                "anthropic-beta": "oauth-2025-04-20",
+            },
+        )
+        return usage if isinstance(usage, dict) else {}
+
+    def _usage_extra(self, creds: dict, usage: dict) -> dict:
+        extra = {"plan_type": creds.get("subscriptionType", "unknown")}
+        fh = usage.get("five_hour", {})
+        sd = usage.get("seven_day", {})
+        if fh:
+            util = fh.get("utilization", 0)
+            pct = round(util) if util is not None else 0
+            resets = fh.get("resets_at")
+            extra["session"] = {
+                "used_pct": pct,
+                "remaining_pct": max(0, 100 - pct),
+                "resets_at": (
+                    int(datetime.fromisoformat(resets).timestamp())
+                    if resets else None
+                ),
+            }
+        if sd:
+            util = sd.get("utilization", 0)
+            pct = round(util) if util is not None else 0
+            resets = sd.get("resets_at")
+            extra["weekly"] = {
+                "used_pct": pct,
+                "remaining_pct": max(0, 100 - pct),
+                "resets_at": (
+                    int(datetime.fromisoformat(resets).timestamp())
+                    if resets else None
+                ),
+            }
+        return extra
 
     def fetch(self) -> ProviderData:
         data = ProviderData(models=OrderedDict())
@@ -25,45 +129,23 @@ class ClaudeProvider(Provider):
         # OAuth rate limit API
         if os.path.exists(creds_path):
             try:
-                with open(creds_path) as f:
-                    creds = json.load(f).get("claudeAiOauth", {})
-                token = creds.get("accessToken", "")
-                if token:
-                    usage = self.http.get_json(
-                        "https://api.anthropic.com/api/oauth/usage",
-                        {
-                            "Authorization": f"Bearer {token}",
-                            "anthropic-beta": "oauth-2025-04-20",
-                        },
-                    )
-                    extra = {"plan_type": creds.get("subscriptionType", "unknown")}
-                    fh = usage.get("five_hour", {})
-                    sd = usage.get("seven_day", {})
-                    if fh:
-                        util = fh.get("utilization", 0)
-                        pct = round(util) if util is not None else 0
-                        resets = fh.get("resets_at")
-                        extra["session"] = {
-                            "used_pct": pct,
-                            "remaining_pct": max(0, 100 - pct),
-                            "resets_at": (
-                                int(datetime.fromisoformat(resets).timestamp())
-                                if resets else None
-                            ),
-                        }
-                    if sd:
-                        util = sd.get("utilization", 0)
-                        pct = round(util) if util is not None else 0
-                        resets = sd.get("resets_at")
-                        extra["weekly"] = {
-                            "used_pct": pct,
-                            "remaining_pct": max(0, 100 - pct),
-                            "resets_at": (
-                                int(datetime.fromisoformat(resets).timestamp())
-                                if resets else None
-                            ),
-                        }
-                    data.extra = extra
+                creds = self._load_oauth(creds_path)
+                if self._token_needs_refresh(creds) and self._refresh_token(data):
+                    creds = self._load_oauth(creds_path)
+
+                try:
+                    usage = self._fetch_usage(creds)
+                except HTTPError as exc:
+                    if exc.code not in CLAUDE_REFRESH_AUTH_STATUSES:
+                        raise
+                    data.meta["oauth_retry_status"] = exc.code
+                    if not self._refresh_token(data):
+                        raise
+                    creds = self._load_oauth(creds_path)
+                    usage = self._fetch_usage(creds)
+
+                if usage:
+                    data.extra = self._usage_extra(creds, usage)
             except Exception:
                 data.meta["oauth_error"] = True
 

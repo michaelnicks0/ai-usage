@@ -215,6 +215,9 @@ def render_table(
 ) -> str:
     """Render results as a formatted table (returns string for testability)."""
     lines: list[str] = []
+    token_labels = [
+        "Tokens In (Hit)", "Tokens In (Miss)", "Tokens Out", "Tokens Total",
+    ]
 
     # Separate API providers (table rows) from subscription providers (detail sections)
     table_results = {
@@ -225,14 +228,12 @@ def render_table(
     for name in registry.all_names():
         if name in table_results:
             ordered.append((name, table_results[name]))
+    seen = {name for name, _ in ordered}
+    ordered.extend((name, data) for name, data in table_results.items() if name not in seen)
 
     if not ordered:
         lines.append("")  # no table rows, go to detail sections
     else:
-        token_labels = [
-            "Tokens In (Hit)", "Tokens In (Miss)", "Tokens Out", "Tokens Total",
-        ]
-
         def _fmt_bal(d: ProviderData) -> str:
             if d.extra and d.extra.get("credits"):
                 bal = d.extra["credits"].get("balance", "0")
@@ -310,7 +311,7 @@ def render_table(
             ))
         if not sess and not weekly:
             reset_label = (
-                "403 blocked" if results["claude"].meta.get("oauth_error") else "unavailable"
+                "auth failed" if results["claude"].meta.get("oauth_error") else "unavailable"
             )
             sub_rows.append((
                 "Claude Code",

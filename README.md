@@ -187,7 +187,7 @@ Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) 
 | X API | Balance | `GET console.x.com/api/accounts/{id}/credits` | Session cookies |
 | X API | Spend | `GET console.x.com/api/accounts/{id}/usage` + pricing | Session cookies |
 | Codex | Session/weekly | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (~/.codex/auth.json) |
-| Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (~/.claude/.credentials.json) |
+| Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (`~/.claude/.credentials.json`, refreshed through Claude Code CLI) |
 | Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json) |
 | Google AI Studio | Model quotas | `POST cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth (~/.hermes/auth/google_oauth.json) |
 
@@ -215,7 +215,7 @@ npm i -g @openai/codex-cli
 codex login
 ```
 
-Claude Code reads local config files automatically (`~/.claude.json`, `~/.claude/stats-cache.json`, `~/.claude/.credentials.json`). No separate setup needed beyond having Claude Code installed and authenticated.
+Claude Code reads local config files automatically (`~/.claude.json`, `~/.claude/stats-cache.json`, `~/.claude/.credentials.json`). No separate setup is needed beyond having Claude Code installed and authenticated. If the cached OAuth access token is expired or the usage endpoint returns an auth/rate-limit status, `ai-usage` runs a minimal Claude Code CLI prompt to let Claude refresh its own credentials, then retries the usage endpoint with the fresh token.
 
 Nous reads the OAuth token from `~/.hermes/auth.json` (set up by `hermes model` or the Hermes setup wizard). No manual credential needed if you've already configured Nous Portal as a provider in Hermes.
 
@@ -223,7 +223,7 @@ Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oaut
 
 ### Credential refresh
 
-Three credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. All are browser session tokens, not API keys. The Nous and Google OAuth tokens auto-refresh via Hermes/Antigravity credentials. All other credentials are long-lived.
+Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. Claude Code, Nous, Google, and Codex use OAuth-managed credentials that auto-refresh through their owning tools. All other credentials are long-lived.
 
 **DeepSeek:** When token usage shows `—`, refresh:
 1. Open https://platform.deepseek.com/usage in Chrome
@@ -245,3 +245,5 @@ Three credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the
 4. Update `X_API_AUTH_TOKEN` and `X_API_CT0` in `~/.hermes/.env`
 
 **Codex:** OAuth token auto-refreshes. Run `codex login` if the app-server stops authenticating.
+
+**Claude Code:** OAuth token auto-refreshes through the Claude Code CLI. `ai-usage` refreshes proactively when the cached token expires within two hours and retries once after `401`, `403`, or `429` from the OAuth usage endpoint. The refresh command is intentionally tiny (`claude -p ping --effort low --max-turns 1 --output-format json --no-session-persistence`) but can still consume a small amount of Claude Code rate-limit quota. If refresh fails, the quota table shows `auth failed` instead of the older misleading `403 blocked` label.

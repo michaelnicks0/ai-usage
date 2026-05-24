@@ -131,6 +131,16 @@ class TestRenderTable:
         assert "Claude Code" in result
         assert "80%" in result
 
+    def test_claude_auth_failure_fallback_is_not_misleading_403(self):
+        pd = ProviderData(
+            extra={"plan_type": "pro"},
+            meta={"oauth_error": True, "refresh_error": "exit 7"},
+        )
+        result = render_table({"claude": pd})
+        assert "Claude Code" in result
+        assert "auth failed" in result
+        assert "403 blocked" not in result
+
     def test_models_section(self):
         td = TokenData(input=500, cached=300, output=100)
         pd = ProviderData(
