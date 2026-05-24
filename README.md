@@ -11,6 +11,19 @@ Cross-provider balance, spend, subscription quota, and token usage — one comma
 | Canonical architecture docs | [`docs/architecture.md`](docs/architecture.md), [`docs/data-architecture.md`](docs/data-architecture.md) |
 | Legacy rendered companions | [`architecture.html`](architecture.html), [`data-architecture.html`](data-architecture.html) |
 
+### Architecture map
+
+```mermaid
+flowchart TD
+    command["ai-usage CLI command"] --> config["Load env and local OAuth credentials"]
+    config --> selection["Select all, one, or multiple providers"]
+    selection --> fetch["Fetch provider balances, spend, quotas, and tokens"]
+    fetch --> normalize["Normalize provider results"]
+    normalize --> persist["Save history snapshots"]
+    normalize --> render["Render table or JSON output"]
+    persist --> history["Render history views"]
+```
+
 ## Example output
 
 ```text
