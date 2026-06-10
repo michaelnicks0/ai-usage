@@ -343,6 +343,17 @@ def render_table(
                 f"{weekly['remaining_pct']}%",
                 fmt_countdown(weekly.get("resets_at"))
             ))
+        if not sess and not weekly:
+            reset_label = (
+                "auth failed" if results["codex"].meta.get("auth_error") else "unavailable"
+            )
+            sub_rows.append((
+                "Codex",
+                plan,
+                "Rate Limits",
+                "—",
+                reset_label
+            ))
             
     # 3. Google AI Studio
     if "google" in results and results["google"].extra:

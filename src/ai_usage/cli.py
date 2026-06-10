@@ -53,7 +53,7 @@ Usage:
   ai-usage help                     this text
 
 Options:
-  -p, --provider PROVIDERS  comma-separated provider names (default: all eight)
+  -p, --provider PROVIDERS  comma-separated provider names (default: all providers)
   -m, --model               add per-model token rows below totals
   -j, --json                machine-readable JSON output
       --history             query saved snapshots instead of live fetch
@@ -63,8 +63,8 @@ Options:
 
 Output fields (table):
   Provider                 provider name (rows)
-  Balance                  credit remaining (USD; Codex shows credits)
-  Spend                    cost this billing cycle (USD; Codex shows session%)
+  Balance                  credit remaining (USD for API-credit providers)
+  Spend                    cost this billing cycle (USD for API-credit providers)
   Tokens In (Hit)          cached prompt tokens
   Tokens In (Miss)         uncached prompt tokens
   Tokens Out               completion tokens

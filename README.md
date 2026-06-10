@@ -34,20 +34,19 @@ $ ./ai-usage
      xAI         $25.00          $0.60              315,968            435,709        2,454        754,131
  Vast.ai          $4.01         $20.99                    —                  —            —              —
      Exa             —           $0.12                    —                  —            —              —
-   X API          $24.99          $0.04                    —                  —            —              —
-   Codex       0 credits     55% · 2h41m                   —                  —            —              —
+    X API          $24.99          $0.04                    —                  —            —              —
     Nous         $21.74         $20.00                    —                  —            —              —
 
 Subscription Quotas
-Subscription      Resource                 Remaining  Resets In
-────────────────  ───────────────────────  ─────────  ─────────
-Claude Code       Session                       100%         5h
-Claude Code       Weekly                         82%      4d12h
-Codex             Session                        95%        45m
-Codex             Weekly                         72%       2d2h
-Google AI Studio  Claude Opus 4.6 (Think)       100%      4h59m
-Google AI Studio  Gemini 3.1 Pro (High)         100%      4h59m
-Google AI Studio  Gemini 3.5 Flash (High)       100%      4h59m
+Subscription      Tier       Resource                 Remaining  Resets In
+────────────────  ─────────  ───────────────────────  ─────────  ─────────
+Claude Code       Pro        Session                       100%         5h
+Claude Code       Pro        Weekly                         82%      4d12h
+Codex             Plus       Session                        95%        45m
+Codex             Plus       Weekly                         72%       2d2h
+Google AI Studio  Ultra 20x  Claude Opus 4.6 (Think)       100%      4h59m
+Google AI Studio  Ultra 20x  Gemini 3.1 Pro (High)         100%      4h59m
+Google AI Studio  Ultra 20x  Gemini 3.5 Flash (High)       100%      4h59m
 ```
 
 ## Usage
@@ -109,28 +108,32 @@ $ ./ai-usage -j -m -p deepseek
 }
 ```
 
-Codex JSON is clean — just the session/weekly data:
+Codex JSON is under the `subscription` branch and contains just session/weekly quota data when the app-server authenticates:
 
 ```json
 $ ./ai-usage -j -p codex
 {
-  "codex": {
-    "plan_type": "plus",
-    "session": {
-      "used_pct": 45,
-      "remaining_pct": 55,
-      "duration_mins": 300,
-      "resets_at": 1778467926
-    },
-    "weekly": {
-      "used_pct": 7,
-      "remaining_pct": 93,
-      "duration_mins": 10080,
-      "resets_at": 1779054726
+  "subscription": {
+    "codex": {
+      "plan_type": "plus",
+      "session": {
+        "used_pct": 45,
+        "remaining_pct": 55,
+        "duration_mins": 300,
+        "resets_at": 1778467926
+      },
+      "weekly": {
+        "used_pct": 7,
+        "remaining_pct": 93,
+        "duration_mins": 10080,
+        "resets_at": 1779054726
+      }
     }
   }
 }
 ```
+
+If Codex local OAuth is stale or the CLI is missing, `ai-usage` keeps Codex visible in the subscription table as `Rate Limits — auth failed`; refresh with `codex login`.
 
 Nous uses subscription credits that deplete with usage:
 
@@ -186,7 +189,7 @@ Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) 
 | Exa | Spend | `GET admin-api.exa.ai/team-management/api-keys/{id}/usage` | Service key |
 | X API | Balance | `GET console.x.com/api/accounts/{id}/credits` | Session cookies |
 | X API | Spend | `GET console.x.com/api/accounts/{id}/usage` + pricing | Session cookies |
-| Codex | Session/weekly | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (~/.codex/auth.json) |
+| Codex | Session/weekly quota rows | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (~/.codex/auth.json; stale/missing auth stays visible as `auth failed`) |
 | Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (`~/.claude/.credentials.json`, refreshed through Claude Code CLI) |
 | Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json) |
 | Google AI Studio | Model quotas | `POST cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth (~/.hermes/auth/google_oauth.json) |
@@ -244,6 +247,6 @@ Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION
 3. Find any request → Cookies tab → copy `auth_token` and `ct0`
 4. Update `X_API_AUTH_TOKEN` and `X_API_CT0` in `~/.hermes/.env`
 
-**Codex:** OAuth token auto-refreshes. Run `codex login` if the app-server stops authenticating.
+**Codex:** OAuth normally refreshes through the Codex CLI app-server. If the app-server returns an auth error such as `token_expired` / `refresh_token_reused`, the quota table shows `auth failed` instead of dropping Codex silently. Run `codex login` to replace `~/.codex/auth.json`.
 
 **Claude Code:** OAuth token auto-refreshes through the Claude Code CLI. `ai-usage` refreshes proactively when the cached token expires within two hours and retries once after `401`, `403`, or `429` from the OAuth usage endpoint. The refresh command is intentionally tiny (`claude -p ping --effort low --max-turns 1 --output-format json --no-session-persistence`) but can still consume a small amount of Claude Code rate-limit quota. If refresh fails, the quota table shows `auth failed` instead of the older misleading `403 blocked` label.

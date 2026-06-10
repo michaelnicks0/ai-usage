@@ -119,6 +119,17 @@ class TestRenderTable:
         assert "Codex" in result
         assert "55%" in result
 
+    def test_codex_auth_failure_fallback_is_visible(self):
+        pd = ProviderData(
+            extra={"plan_type": "unknown"},
+            meta={"auth_error": True, "rpc_error": "token_expired"},
+        )
+        result = render_table({"codex": pd})
+        assert "Subscription Quotas" in result
+        assert "Codex" in result
+        assert "Rate Limits" in result
+        assert "auth failed" in result
+
     def test_claude_detail_section(self):
         pd = ProviderData(
             extra={

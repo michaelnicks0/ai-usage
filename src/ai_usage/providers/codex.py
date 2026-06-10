@@ -43,6 +43,22 @@ class CodexProvider(Provider):
     display_name = "Codex"
     is_subscription = True
 
+    def _mark_unavailable(
+        self,
+        data: ProviderData,
+        *,
+        launch_error: str | None = None,
+        rpc_error: str | None = None,
+    ) -> None:
+        """Keep Codex visible in subscription output when its local auth path fails."""
+        if data.extra is None:
+            data.extra = {"plan_type": "unknown"}
+        data.meta["auth_error"] = True
+        if launch_error:
+            data.meta["launch_error"] = launch_error
+        if rpc_error:
+            data.meta["rpc_error"] = rpc_error
+
     def fetch(self) -> ProviderData:
         data = ProviderData(models=OrderedDict())
 
@@ -64,6 +80,7 @@ class CodexProvider(Provider):
                 env=env,
             )
         except FileNotFoundError:
+            self._mark_unavailable(data, launch_error="codex not found")
             return data
 
         pending: dict[int, tuple[threading.Event, dict]] = {}
@@ -118,7 +135,13 @@ class CodexProvider(Provider):
                     pending.pop(req_id, None)
                 return None
             msg = container.get("msg", {})
-            if "error" in msg or "result" not in msg:
+            if "error" in msg:
+                err = msg.get("error") or {}
+                message = err.get("message") if isinstance(err, dict) else str(err)
+                self._mark_unavailable(data, rpc_error=message or "unknown rpc error")
+                return None
+            if "result" not in msg:
+                self._mark_unavailable(data, rpc_error="missing JSON-RPC result")
                 return None
             return msg.get("result")
 
@@ -157,7 +180,7 @@ class CodexProvider(Provider):
                     data.balance = 0
                 data.extra = extra
         except Exception:
-            pass
+            self._mark_unavailable(data, rpc_error="codex provider exception")
         finally:
             # Clean shutdown
             try:
