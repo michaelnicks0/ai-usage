@@ -133,7 +133,7 @@ $ ./ai-usage -j -p codex
 }
 ```
 
-If Codex local OAuth is stale or the CLI is missing, `ai-usage` keeps Codex visible in the subscription table as `Rate Limits — auth failed`; refresh with `codex login`.
+If Codex local OAuth is stale, `ai-usage` runs interactive `codex login` once from a TTY, then retries the app-server request. In non-interactive shells, or if login still fails, Codex stays visible in the subscription table as `Rate Limits — auth failed`.
 
 Nous uses subscription credits that deplete with usage:
 
@@ -189,7 +189,7 @@ Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) 
 | Exa | Spend | `GET admin-api.exa.ai/team-management/api-keys/{id}/usage` | Service key |
 | X API | Balance | `GET console.x.com/api/accounts/{id}/credits` | Session cookies |
 | X API | Spend | `GET console.x.com/api/accounts/{id}/usage` + pricing | Session cookies |
-| Codex | Session/weekly quota rows | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (~/.codex/auth.json; stale/missing auth stays visible as `auth failed`) |
+| Codex | Session/weekly quota rows | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (`~/.codex/auth.json`; stale auth triggers one interactive `codex login` retry on TTY) |
 | Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (`~/.claude/.credentials.json`, refreshed through Claude Code CLI) |
 | Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json) |
 | Google AI Studio | Model quotas | `POST cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth (~/.hermes/auth/google_oauth.json) |
@@ -222,7 +222,7 @@ Claude Code reads local config files automatically (`~/.claude.json`, `~/.claude
 
 Nous reads the OAuth token from `~/.hermes/auth.json` (set up by `hermes model` or the Hermes setup wizard). No manual credential needed if you've already configured Nous Portal as a provider in Hermes.
 
-Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oauth.json` (written by the Hermes CLI when authenticating the `google-agy` provider). It handles refresh-token rotation and GCP project ID resolution under the hood dynamically.
+Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oauth.json` (written by the Hermes CLI when authenticating the `google-agy` provider). It handles refresh-token rotation, retries once after auth/rate-limit failures from the Cloud Code quota endpoint, and resolves the GCP project ID dynamically.
 
 ### Credential refresh
 
@@ -247,6 +247,8 @@ Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION
 3. Find any request → Cookies tab → copy `auth_token` and `ct0`
 4. Update `X_API_AUTH_TOKEN` and `X_API_CT0` in `~/.hermes/.env`
 
-**Codex:** OAuth normally refreshes through the Codex CLI app-server. If the app-server returns an auth error such as `token_expired` / `refresh_token_reused`, the quota table shows `auth failed` instead of dropping Codex silently. Run `codex login` to replace `~/.codex/auth.json`.
+**Codex:** OAuth normally refreshes through the Codex CLI app-server. If the app-server returns an auth error such as `token_expired` / `refresh_token_reused`, `ai-usage` runs `codex login` once when attached to an interactive TTY, then retries the quota request. If the shell is non-interactive or login fails, the quota table shows `auth failed` instead of dropping Codex silently.
+
+**Google AI Studio:** OAuth refresh runs automatically when the cached token is near expiry and retries once after `401`, `403`, or `429` from the Cloud Code quota endpoint. If refresh fails, Google quota rows may be absent and `meta.api_error` records the failure.
 
 **Claude Code:** OAuth token auto-refreshes through the Claude Code CLI. `ai-usage` refreshes proactively when the cached token expires within two hours and retries once after `401`, `403`, or `429` from the OAuth usage endpoint. The refresh command is intentionally tiny (`claude -p ping --effort low --max-turns 1 --output-format json --no-session-persistence`) but can still consume a small amount of Claude Code rate-limit quota. If refresh fails, the quota table shows `auth failed` instead of the older misleading `403 blocked` label.

@@ -9,6 +9,7 @@ from collections import OrderedDict
 from datetime import datetime, timezone
 import urllib.request
 import urllib.parse
+import urllib.error
 
 from ai_usage.models import ProviderData
 from ai_usage.providers import Provider, registry
@@ -103,18 +104,34 @@ class GoogleProvider(Provider):
                 project_id = parts[1]
                 
         # 2. Fetch Available Models and Quotas
-        try:
+        def fetch_models(token: str) -> dict:
             req_fm = urllib.request.Request(
                 "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
                 data=json.dumps({"project": project_id}).encode(),
                 headers={
-                    "Authorization": f"Bearer {access_token}",
+                    "Authorization": f"Bearer {token}",
                     "User-Agent": "antigravity",
                     "Content-Type": "application/json"
                 }
             )
             with urllib.request.urlopen(req_fm, timeout=10) as resp:
-                models_res = json.loads(resp.read().decode())
+                return json.loads(resp.read().decode())
+
+        try:
+            try:
+                models_res = fetch_models(access_token)
+            except urllib.error.HTTPError as exc:
+                if exc.code not in {401, 403, 429}:
+                    raise
+                data.meta["oauth_retry_status"] = exc.code
+                with open(_GOOGLE_AUTH_PATH) as f:
+                    auth_data = json.load(f)
+                refreshed_token = _google_refresh_token(auth_data)
+                if not refreshed_token or refreshed_token == access_token:
+                    raise
+                data.meta["token_refreshed"] = True
+                access_token = refreshed_token
+                models_res = fetch_models(access_token)
                 
             models = models_res.get("models", {})
             

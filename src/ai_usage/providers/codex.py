@@ -13,6 +13,14 @@ from collections import OrderedDict
 from ai_usage.models import ProviderData
 from ai_usage.providers import Provider, registry
 
+CODEX_LOGIN_TIMEOUT_SECONDS = 300
+_CODEX_AUTH_ERROR_MARKERS = (
+    "auth",
+    "token_expired",
+    "refresh_token_reused",
+    "unauthorized",
+)
+
 
 def _node_version_key(version: str) -> tuple[int, ...]:
     """Sort nvm version names like v20.11.1 semantically."""
@@ -37,6 +45,19 @@ def _resolve_node() -> str | None:
     return None
 
 
+def _is_codex_auth_error(message: str | None) -> bool:
+    """Return True for app-server errors that can be fixed by `codex login`."""
+    if not message:
+        return False
+    lowered = message.lower()
+    return any(marker in lowered for marker in _CODEX_AUTH_ERROR_MARKERS)
+
+
+def _can_interactive_login() -> bool:
+    """Only run browser/device login from an interactive terminal."""
+    return os.isatty(0) and os.isatty(1)
+
+
 @registry.register
 class CodexProvider(Provider):
     name = "codex"
@@ -59,15 +80,45 @@ class CodexProvider(Provider):
         if rpc_error:
             data.meta["rpc_error"] = rpc_error
 
-    def fetch(self) -> ProviderData:
-        data = ProviderData(models=OrderedDict())
-
-        # Resolve node binary (needed for codex CLI)
+    def _env(self) -> dict[str, str]:
+        """Build a subprocess environment where the Node-backed codex CLI can run."""
         node_bin = _resolve_node()
         env = os.environ.copy()
         if node_bin:
             node_dir = os.path.dirname(node_bin)
             env["PATH"] = node_dir + os.pathsep + env.get("PATH", "")
+        return env
+
+    def _run_login(self, env: dict[str, str], data: ProviderData) -> bool:
+        """Run interactive `codex login` once when app-server auth is stale."""
+        data.meta["login_attempted"] = True
+        if not _can_interactive_login():
+            data.meta["login_skipped"] = "non-interactive"
+            return False
+        try:
+            result = subprocess.run(
+                ["codex", "login"],
+                env=env,
+                timeout=CODEX_LOGIN_TIMEOUT_SECONDS,
+                check=False,
+            )
+        except FileNotFoundError:
+            data.meta["login_error"] = "codex not found"
+            return False
+        except subprocess.TimeoutExpired:
+            data.meta["login_error"] = "timeout"
+            return False
+        except Exception as exc:
+            data.meta["login_error"] = str(exc) or exc.__class__.__name__
+            return False
+
+        if result.returncode != 0:
+            data.meta["login_error"] = f"exit {result.returncode}"
+            return False
+        return True
+
+    def _fetch_once(self, env: dict[str, str]) -> ProviderData:
+        data = ProviderData(models=OrderedDict())
 
         try:
             proc = subprocess.Popen(
@@ -157,16 +208,18 @@ class CodexProvider(Provider):
                 cr = rl.get("credits", {})
                 extra = {"plan_type": rl.get("planType", "unknown")}
                 if p:
+                    used_pct = p.get("usedPercent", 0)
                     extra["session"] = {
-                        "used_pct": p.get("usedPercent", 0),
-                        "remaining_pct": 100 - p.get("usedPercent", 0),
+                        "used_pct": used_pct,
+                        "remaining_pct": max(0, 100 - used_pct),
                         "duration_mins": p.get("windowDurationMins", 0),
                         "resets_at": p.get("resetsAt"),
                     }
                 if s:
+                    used_pct = s.get("usedPercent", 0)
                     extra["weekly"] = {
-                        "used_pct": s.get("usedPercent", 0),
-                        "remaining_pct": 100 - s.get("usedPercent", 0),
+                        "used_pct": used_pct,
+                        "remaining_pct": max(0, 100 - used_pct),
                         "duration_mins": s.get("windowDurationMins", 0),
                         "resets_at": s.get("resetsAt"),
                     }
@@ -182,11 +235,24 @@ class CodexProvider(Provider):
         except Exception:
             self._mark_unavailable(data, rpc_error="codex provider exception")
         finally:
-            # Clean shutdown
             try:
                 proc.stdin.close()
             except Exception:
                 pass
-            proc.wait(timeout=3)
+            try:
+                proc.wait(timeout=3)
+            except Exception:
+                pass
 
+        return data
+
+    def fetch(self) -> ProviderData:
+        env = self._env()
+        data = self._fetch_once(env)
+        rpc_error = data.meta.get("rpc_error")
+        if data.meta.get("auth_error") and _is_codex_auth_error(rpc_error):
+            if self._run_login(env, data):
+                refreshed = self._fetch_once(env)
+                refreshed.meta["login_refreshed"] = True
+                return refreshed
         return data

@@ -88,18 +88,19 @@ sequenceDiagram
 | `vastai` | Vast.ai | Balance and spend | Vast.ai user and charges APIs |
 | `exa` | Exa | Balance and spend | Exa dashboard/admin APIs |
 | `x` | X API | Credit balance and spend | X console API |
-| `codex` | Codex | Subscription/session quota with visible auth-failure fallback | `codex app-server` JSON-RPC |
+| `codex` | Codex | Subscription/session quota with interactive auth-retry fallback | `codex app-server` JSON-RPC |
 | `claude` | Claude Code | Subscription/session quota and local usage | Anthropic OAuth usage API + Claude local files + Claude CLI refresh |
 | `nous` | Nous | Subscription credits | Nous Portal OAuth API |
-| `google` | Google AI Studio | Model quota rows | Cloud Code internal model/quota endpoint |
+| `google` | Google AI Studio | Model quota rows with OAuth refresh retry | Cloud Code internal model/quota endpoint |
 
 ## Data boundaries
 
 - Credential values live outside the repo and must not be copied into Markdown.
-- Provider errors are normalized into `ProviderData.meta` rather than crashing the whole table where possible; Codex auth/launch failures render as `auth failed` instead of disappearing from the subscription table.
+- Provider errors are normalized into `ProviderData.meta` rather than crashing the whole table where possible; Codex auth failures trigger one interactive `codex login` retry on TTY and otherwise render as `auth failed` instead of disappearing from the subscription table.
 - `SnapshotDB` stores normalized numeric output for history; raw provider payloads are not the documentation source.
 - Codex, Claude, Google, and Nous have quota/subscription semantics that do not map cleanly to a simple dollar balance row.
 - Claude OAuth refresh is delegated to the Claude Code CLI with a minimal prompt when the cached access token is near expiry or the usage endpoint rejects it with an auth/rate-limit status.
+- Google OAuth refresh runs before expiry and retries once after auth/rate-limit statuses from the Cloud Code quota endpoint.
 
 ## Maintenance notes
 

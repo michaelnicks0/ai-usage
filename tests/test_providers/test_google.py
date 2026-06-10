@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+from email.message import Message
 from unittest.mock import patch, mock_open, MagicMock
+from urllib.error import HTTPError
 import pytest
 
+from ai_usage.providers import google as google_module
 from ai_usage.providers.google import GoogleProvider
 
 
@@ -74,6 +77,51 @@ class TestGoogleProvider:
         assert model_info["display_name"] == "Gemini 3.1 Pro (High)"
         assert model_info["remaining_pct"] == 85
         assert model_info["resets_at"] == 1779330350  # 2026-05-21T02:25:50Z in epoch
+
+    @patch("ai_usage.providers.google.os.path.exists")
+    @patch("ai_usage.providers.google.open", new_callable=mock_open)
+    @patch("urllib.request.urlopen")
+    def test_auth_failure_refreshes_and_retries(self, mock_urlopen, mock_file_open, mock_exists, monkeypatch, mock_http, credentials):
+        mock_exists.return_value = True
+        auth_data = {
+            "access": "stale_ya29",
+            "expires": 9999999999999,
+            "refresh": "raw_refresh|project_id|managed_id",
+        }
+        mock_file_open.return_value.read.return_value = json.dumps(auth_data)
+
+        mock_models_resp = MagicMock()
+        mock_models_resp.read.return_value = json.dumps({
+            "models": {
+                "gemini-3.1-pro-high": {
+                    "displayName": "Gemini 3.1 Pro (High)",
+                    "quotaInfo": {"remainingFraction": "0.5"},
+                }
+            }
+        }).encode()
+        mock_models_cm = MagicMock()
+        mock_models_cm.__enter__.return_value = mock_models_resp
+        mock_urlopen.side_effect = [
+            HTTPError("https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels", 401, "Unauthorized", Message(), None),
+            mock_models_cm,
+        ]
+
+        refresh_calls = []
+
+        def fake_refresh(creds):
+            refresh_calls.append(creds.copy())
+            return "fresh_ya29"
+
+        monkeypatch.setattr(google_module, "_google_refresh_token", fake_refresh)
+
+        data = GoogleProvider(credentials, mock_http).fetch()
+
+        assert refresh_calls
+        assert data.extra is not None
+        assert data.extra["plan_type"] == "Ultra 20x"
+        assert data.extra["models"]["gemini-3.1-pro-high"]["remaining_pct"] == 50
+        assert data.meta["token_refreshed"] is True
+        assert data.meta["oauth_retry_status"] == 401
 
     @patch("ai_usage.providers.google.os.path.exists")
     @patch("ai_usage.providers.google.open", new_callable=mock_open)
