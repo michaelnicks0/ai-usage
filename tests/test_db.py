@@ -51,6 +51,14 @@ class TestSnapshotDB:
         assert len(rows) == 2
         db.close()
 
+    def test_all_provider_limit_uses_provider_count(self, temp_db_path):
+        db = SnapshotDB(temp_db_path)
+        for i in range(20):
+            db.save(f"provider-{i % 9}", balance=float(i), spent=0)
+        rows = db.query(limit=2, provider_count=9)
+        assert len(rows) == 18
+        db.close()
+
     def test_close_is_idempotent(self, temp_db_path):
         db = SnapshotDB(temp_db_path)
         db.close()

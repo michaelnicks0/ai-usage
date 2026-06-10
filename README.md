@@ -60,9 +60,9 @@ Google AI Studio  Ultra 20x  Gemini 3.5 Flash (High)       100%      4h59m
 ./ai-usage -m -p deepseek,xai       # per-model, filtered
 ./ai-usage -j                       # JSON output
 ./ai-usage -j -m                    # JSON with per-model breakdown
-./ai-usage --history                 # last 10 snapshots (all providers)
-./ai-usage --history --history-provider xai  # last 10 for xAI only
-./ai-usage --history --limit 30      # last 30 snapshots
+./ai-usage --history                 # last 10 fetch groups (all providers)
+./ai-usage --history --history-provider xai  # last 10 rows for xAI only
+./ai-usage --history --history-limit 30  # last 30 fetch groups
 ```
 
 ### JSON output
@@ -70,39 +70,43 @@ Google AI Studio  Ultra 20x  Gemini 3.5 Flash (High)       100%      4h59m
 ```json
 $ ./ai-usage -j -p deepseek
 {
-  "deepseek": {
-    "balance": 6.03,
-    "period_spend": 3.97,
-    "tokens_in_hit": 118428800,
-    "tokens_in_hit_percentage": 94.1,
-    "tokens_in_miss": 7388843,
-    "tokens_in_miss_percentage": 5.9,
-    "tokens_out": 379566,
-    "tokens_total": 126197209
+  "api": {
+    "deepseek": {
+      "balance": 6.03,
+      "period_spend": 3.97,
+      "tokens_in_hit": 118428800,
+      "tokens_in_hit_percentage": 94.1,
+      "tokens_in_miss": 7388843,
+      "tokens_in_miss_percentage": 5.9,
+      "tokens_out": 379566,
+      "tokens_total": 126197209
+    }
   }
 }
 ```
 
-With `-m`, each provider gets a `models` key:
+With `-m`, providers that expose per-model or per-event data get a `models` key:
 
 ```json
 $ ./ai-usage -j -m -p deepseek
 {
-  "deepseek": {
-    "balance": 6.03,
-    "period_spend": 3.97,
-    "tokens_in_hit": 118428800,
-    ...
-    "models": {
-      "deepseek-v4-pro": {
-        "tokens_in_hit": 118428800,
-        "tokens_in_hit_percentage": 94.1,
-        "tokens_in_miss": 7388843,
-        "tokens_in_miss_percentage": 5.9,
-        "tokens_out": 379566,
-        "tokens_total": 126197209
-      },
-      "deepseek-v4-flash": { ... }
+  "api": {
+    "deepseek": {
+      "balance": 6.03,
+      "period_spend": 3.97,
+      "tokens_in_hit": 118428800,
+      ...
+      "models": {
+        "deepseek-v4-pro": {
+          "tokens_in_hit": 118428800,
+          "tokens_in_hit_percentage": 94.1,
+          "tokens_in_miss": 7388843,
+          "tokens_in_miss_percentage": 5.9,
+          "tokens_out": 379566,
+          "tokens_total": 126197209
+        },
+        "deepseek-v4-flash": { ... }
+      }
     }
   }
 }
@@ -140,13 +144,15 @@ Nous uses subscription credits that deplete with usage:
 ```json
 $ ./ai-usage -j -p nous
 {
-  "nous": {
-    "balance": 21.74,
-    "period_spend": 20.00,
-    "plan_type": "Plus",
-    "monthly_charge": 20.00,
-    "credits_remaining": 21.74,
-    "current_period_end": "2026-06-11T15:17:45.000Z"
+  "api": {
+    "nous": {
+      "balance": 21.74,
+      "period_spend": 20.00,
+      "plan_type": "Plus",
+      "monthly_charge": 20.00,
+      "credits_remaining": 21.74,
+      "current_period_end": "2026-06-11T15:17:45.000Z"
+    }
   }
 }
 ```
@@ -166,6 +172,8 @@ $ ./ai-usage -j -p nous
 | Google AI Studio | — | — | — | — | — | — |
 
 Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Queried via the Codex CLI app-server JSON-RPC interface.
+
+Exa is skipped unless `EXA_ENABLED=true`; this keeps the default all-provider run from making slow or rate-limited dashboard/admin calls.
 
 Claude Code uses subscription/rate-limit windows and local/OAuth usage state. Its model details do not map cleanly to the generic dollar-balance rows.
 
@@ -192,7 +200,7 @@ Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) 
 | Codex | Session/weekly quota rows | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (`~/.codex/auth.json`; stale auth triggers one interactive `codex login` retry on TTY) |
 | Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (`~/.claude/.credentials.json`, refreshed through Claude Code CLI) |
 | Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json) |
-| Google AI Studio | Model quotas | `POST cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth (~/.hermes/auth/google_oauth.json) |
+| Google AI Studio | Model quotas | `POST daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth (~/.hermes/auth/google_oauth.json) |
 
 ## Setup
 
@@ -206,6 +214,7 @@ XAI_TEAM_ID=...                    # UUID from management keys page
 VASTAI_API_KEY=***                 # from cloud.vast.ai/manage-keys
 EXA_SERVICE_KEY=***                # from dashboard.exa.ai (service key, not search key)
 EXA_SESSION_TOKEN=***              # from dashboard.exa.ai Network tab (expires, see below)
+EXA_ENABLED=true                   # optional: Exa is skipped unless explicitly enabled
 X_API_AUTH_TOKEN=***               # from console.x.com Network tab → auth_token cookie
 X_API_CT0=***                      # from console.x.com Network tab → ct0 cookie
 X_API_ACCOUNT_ID=***               # from console.x.com URL /accounts/{id}
@@ -231,10 +240,10 @@ Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION
 **DeepSeek:** When token usage shows `—`, refresh:
 1. Open https://platform.deepseek.com/usage in Chrome
 2. Press F12 → Network tab → refresh the page
-3. Find any request to `platform.deepseek.com` → copy the `Authorization: Bearer ***` header value
+3. Find any request to `platform.deepseek.com` → copy the `Authorization: Bearer [REDACTED]` header value
 4. Update `DEEPSEEK_AUTH_TOKEN` in `~/.hermes/.env`
 
-**Exa:** When balance shows `—`, refresh:
+**Exa:** Exa is disabled by default to avoid slow/rate-limited dashboard calls. Set `EXA_ENABLED=true` in `~/.hermes/.env` or the process environment before running `ai-usage`. When balance shows `—` while enabled, refresh:
 1. Open https://dashboard.exa.ai/new-billing in Chrome
 2. Press F12 → Network tab → refresh the page
 3. Find the request to `get-orb-balance` → click it → Cookies tab

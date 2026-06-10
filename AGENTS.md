@@ -64,10 +64,11 @@ src/ai_usage/
 
 ### Credential handling
 
-- Most credentials are read from `~/.hermes/.env`.
+- Most API and browser-session credentials are read from `~/.hermes/.env`.
 - Vast.ai can also read `~/.config/vastai/vast_api_key`.
 - Nous reads Hermes OAuth state from `~/.hermes/auth.json`.
-- Google AI Studio uses the configured `google-agy`/Hermes OAuth path; do not add API-key auth without discussion.
+- Google AI Studio reads `~/.hermes/auth/google_oauth.json` from the configured `google-agy`/Hermes OAuth path; do not add API-key auth without discussion.
+- Exa dashboard/admin calls are skipped unless `EXA_ENABLED=true` is present in the process environment or `~/.hermes/.env`.
 - Browser-session credentials that may expire:
   - `DEEPSEEK_AUTH_TOKEN`
   - `EXA_SESSION_TOKEN`

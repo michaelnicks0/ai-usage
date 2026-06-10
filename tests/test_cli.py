@@ -13,6 +13,8 @@ class TestCLI:
         assert result == 0
         captured = capsys.readouterr()
         assert "ai-usage" in captured.out
+        assert "Google AI Studio" in captured.out
+        assert "EXA_ENABLED" in captured.out
 
     def test_help_subcommand(self, capsys):
         result = main(["help"])
@@ -59,5 +61,10 @@ class TestCLI:
 
         result = main(["--history"])
         assert result == 0
+        mock_db_instance.query.assert_called_once_with(
+            provider=None,
+            limit=10,
+            provider_count=9,
+        )
         captured = capsys.readouterr()
         assert "No history found" in captured.out

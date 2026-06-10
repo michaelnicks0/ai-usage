@@ -1,11 +1,77 @@
 # ai-usage Audit Report
 
-**Date:** 2026-05-12  
-**Goal:** Audit across test coverage, safety, scalability, performance. Close gaps until every dimension ≥ 90.
+**Latest audit:** 2026-06-10
+
+**Goal:** Keep documentation, code, tests, and live CLI behavior aligned for the cross-provider balance/spend/quota/token-usage utility.
 
 ---
 
-## Scoring Runs
+## Current Audit — 2026-06-10
+
+### Code-derived current state
+
+| Area | Verified state |
+|---|---|
+| Providers | 9 registered providers: DeepSeek, xAI, Vast.ai, Exa, X API, Codex, Claude Code, Nous, Google AI Studio |
+| CLI entry point | `ai_usage.cli:main`, wrapper script `./ai-usage`, package script `ai-usage` |
+| Default live fetch | `-p` defaults to all registered providers from the registry |
+| History storage | SQLite database at `~/.hermes/ai-usage.db`; `--history-limit` is multiplied by current provider count for all-provider history |
+| Env credential file | `~/.hermes/.env` for API/browser-session credentials and `EXA_ENABLED` |
+| OAuth/local auth files | Codex `~/.codex/auth.json`; Claude `~/.claude/.credentials.json`, `~/.claude.json`, `~/.claude/stats-cache.json`; Nous `~/.hermes/auth.json`; Google `~/.hermes/auth/google_oauth.json` |
+| Exa default | Skipped unless `EXA_ENABLED=true` is loaded from the process environment or `~/.hermes/.env` |
+| Subscription providers | Codex, Claude Code, Google AI Studio render in the `Subscription Quotas` section / JSON `subscription` branch |
+| API-credit providers | DeepSeek, xAI, Vast.ai, Exa, X API, Nous render in the main/API branch |
+
+### Documentation/code mismatches fixed in this audit
+
+1. **README JSON examples** — Examples showed provider objects at JSON root, but `render_json()` returns `api` and/or `subscription` top-level branches. Updated DeepSeek and Nous examples.
+2. **History flag** — README documented `--limit`; the actual CLI flag is `--history-limit`. Updated usage examples and clarified fetch-group vs per-provider row semantics.
+3. **History provider count** — `SnapshotDB.query()` still multiplied all-provider history by 8 after Google became the ninth registered provider. Changed query to accept `provider_count` and the CLI now passes `len(ALL_PROVIDERS)`.
+4. **Exa enablement** — Implementation skipped Exa unless `EXA_ENABLED=true`, but docs did not mention it and config only read the live process environment. Added `EXA_ENABLED` to credential loading so `~/.hermes/.env` works, and documented the gate.
+5. **Google endpoint host** — README API table used `cloudcode-pa.googleapis.com`; code uses `daily-cloudcode-pa.googleapis.com`. Updated README.
+6. **CLI help text** — Help omitted Google AI Studio and subscription quota scope. Updated help text, pyproject description, and regression assertions.
+7. **Architecture docs** — Diagram and credential notes omitted the Google OAuth file and Exa gate. Updated canonical Markdown docs and AGENTS guidance.
+
+### Verification — current run
+
+```text
+.venv/bin/python -m pytest tests/ -v --cov=ai_usage --cov-report=term
+88 passed in 0.65s
+TOTAL 1308 statements, 337 missed, 74% coverage
+```
+
+Coverage by module from the current verified run:
+
+| Module | Coverage |
+|---|---:|
+| `models.py` | 100% |
+| `db.py` | 100% |
+| `providers/deepseek.py` | 100% |
+| `providers/x.py` | 100% |
+| `providers/xai.py` | 100% |
+| `config.py` | 97% |
+| `cli.py` | 94% |
+| `providers/__init__.py` | 93% |
+| `providers/vastai.py` | 92% |
+| `providers/google.py` | 89% |
+| `providers/exa.py` | 85% |
+| `providers/codex.py` | 74% |
+| `render.py` | 68% |
+| `providers/claude.py` | 61% |
+| `http.py` | 34% |
+| `providers/nous.py` | 24% |
+| `fetcher.py` | 21% |
+| **Overall** | **74%** |
+
+### Remaining watch items
+
+- `fetcher.py` and `http.py` remain low-coverage because concurrency/timeouts/retry failure paths need more targeted fakes.
+- `nous.py` remains low-coverage because the refresh path updates local OAuth state and calls the live Portal token endpoint shape.
+- Rendered HTML companions are legacy references. Markdown/Mermaid files are canonical unless the HTML is explicitly regenerated.
+
+---
+
+## Historical Scoring Runs
 
 ### Run 1 — Baseline (v1.x, monolithic)
 

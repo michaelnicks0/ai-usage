@@ -56,7 +56,12 @@ class SnapshotDB:
         )
         self.conn.commit()
 
-    def query(self, provider: str | None = None, limit: int = 10) -> list[tuple]:
+    def query(
+        self,
+        provider: str | None = None,
+        limit: int = 10,
+        provider_count: int = 9,
+    ) -> list[tuple]:
         """Return snapshot rows, newest first."""
         if provider:
             rows = self.conn.execute(
@@ -72,8 +77,8 @@ class SnapshotDB:
                 "tokens_input, tokens_cached, tokens_output "
                 "FROM snapshots "
                 "ORDER BY timestamp DESC LIMIT ?",
-                # Multiply limit by expected provider count for reasonable results
-                (limit * 8,),
+                # Multiply by provider count so --history-limit means fetch groups.
+                (limit * provider_count,),
             ).fetchall()
         return rows
 

@@ -32,6 +32,7 @@ class TestCredentials:
     def test_defaults(self):
         c = Credentials()
         assert c.deepseek_api_key == ""
+        assert c.exa_enabled is False
         assert c.http_timeout == 10
         assert c.total_timeout == 60
         assert c.ds_price_cache_hit == 0.003625
@@ -56,6 +57,7 @@ class TestLoadCredentials:
     def test_loads_from_env_file(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
             f.write("DEEPSEEK_API_KEY=sk-file-test\n")
+            f.write("EXA_ENABLED=true\n")
             env_path = f.name
         try:
             with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as nf:
@@ -68,6 +70,7 @@ class TestLoadCredentials:
                     nous_auth_file=nous_path,
                 )
                 assert creds.deepseek_api_key == "sk-file-test"
+                assert creds.exa_enabled is True
                 assert creds.nous_access_token == "nous-file-token"
             finally:
                 os.unlink(nous_path)

@@ -29,6 +29,7 @@ flowchart TB
     config --> hermesEnv[("~/.hermes/.env")]:::datastore
     config --> vastKey[("~/.config/vastai/vast_api_key")]:::datastore
     config --> nousAuth[("~/.hermes/auth.json")]:::datastore
+    config --> googleAuth[("~/.hermes/auth/google_oauth.json")]:::datastore
 
     registry --> providers["Provider modules<br/>deepseek, xai, vastai, exa, x, codex, claude, nous, google"]:::process
     fetcher --> http["HttpClient<br/>timeout + retry"]:::process
@@ -99,6 +100,7 @@ sequenceDiagram
 - Provider errors are normalized into `ProviderData.meta` rather than crashing the whole table where possible; Codex auth failures trigger one interactive `codex login` retry on TTY and otherwise render as `auth failed` instead of disappearing from the subscription table.
 - `SnapshotDB` stores normalized numeric output for history; raw provider payloads are not the documentation source.
 - Codex, Claude, Google, and Nous have quota/subscription semantics that do not map cleanly to a simple dollar balance row.
+- Exa dashboard/admin calls are intentionally disabled unless `EXA_ENABLED=true` is loaded from the environment or `~/.hermes/.env`.
 - Claude OAuth refresh is delegated to the Claude Code CLI with a minimal prompt when the cached access token is near expiry or the usage endpoint rejects it with an auth/rate-limit status.
 - Google OAuth refresh runs before expiry and retries once after auth/rate-limit statuses from the Cloud Code quota endpoint.
 

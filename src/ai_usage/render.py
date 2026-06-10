@@ -37,7 +37,7 @@ def fmt_tok(n: int) -> str:
 
 
 def fmt_countdown(ts: int | None) -> str:
-    """Format time until reset for Codex/Claude display."""
+    """Format time until reset for subscription quota display."""
     if ts is None:
         return "—"
     delta = datetime.fromtimestamp(ts, tz=timezone.utc) - datetime.now(timezone.utc)
@@ -112,7 +112,7 @@ def render_json(
     sub_out: OrderedDict = OrderedDict()
 
     for name, d in results.items():
-        # Codex: only the codex block
+        # Codex: subscription-only quota block
         if name == "codex":
             cx = d.extra
             if cx:

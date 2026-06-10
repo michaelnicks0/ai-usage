@@ -48,7 +48,7 @@ flowchart LR
 | DeepSeek | `/user/balance`; `/api/v0/usage/amount` | `balance`, calculated `spent`, aggregate/model `TokenData` |
 | xAI | Management billing balance and invoice preview | `balance`, `spent`, aggregate/model `TokenData` |
 | Vast.ai | Current user credit and charges APIs | `balance`, `spent`; tokens are not applicable |
-| Exa | Dashboard balance and admin usage APIs | `balance`, `spent`; tokens are not applicable |
+| Exa | Dashboard balance and admin usage APIs | `balance`, `spent`; tokens are not applicable; provider fetch is skipped unless `EXA_ENABLED=true` |
 | X API | Console credits and usage APIs | `balance`, calculated `spent`; tokens are not applicable |
 | Codex | Codex app-server rate-limit JSON-RPC | `extra` quota rows; dollar/token fields are not applicable; app-server auth failures run one interactive `codex login` retry on TTY, otherwise set `meta.auth_error` and stay visible as an `auth failed` quota row |
 | Claude Code | OAuth usage endpoint, local usage files, and Claude CLI refresh | `extra` quota rows and provider-specific model details; `meta.token_refreshed`, `meta.oauth_retry_status`, and `meta.refresh_error` describe refresh behavior when needed |

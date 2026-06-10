@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import argparse
-import logging
 import sys
 
-from ai_usage.config import Credentials, load_credentials
+from ai_usage.config import load_credentials
 from ai_usage.db import SnapshotDB
 from ai_usage.fetcher import fetch_all
 from ai_usage.http import HttpClient
-from ai_usage.models import ProviderData
 from ai_usage.providers import registry as provider_registry
 from ai_usage.render import (
     render_history,
@@ -33,11 +31,12 @@ import ai_usage.providers.google   # noqa: F401
 ALL_PROVIDERS = provider_registry.all_names()
 
 HELP_TEXT = """\
-ai-usage — cross-provider balance + token usage.
+ai-usage — cross-provider balance, spend, quota, and token usage.
 
-Fetch normalized account balance, period spend, and token breakdowns
-from DeepSeek, xAI, Vast.ai, Exa, X API, Codex, Claude Code, and Nous.
-Reads credentials from ~/.hermes/.env.
+Fetch normalized account balance, period spend, subscription quota,
+and token breakdowns from DeepSeek, xAI, Vast.ai, Exa, X API,
+Codex, Claude Code, Nous, and Google AI Studio.
+Reads credentials from ~/.hermes/.env and local OAuth files.
 
 Usage:
   ai-usage                          all providers (default)
@@ -78,12 +77,14 @@ Credentials (from ~/.hermes/.env):
   VASTAI_API_KEY           Vast.ai API key (or ~/.config/vastai/vast_api_key)
   EXA_SERVICE_KEY          Exa service key (from dashboard.exa.ai)
   EXA_SESSION_TOKEN        Exa dashboard session token (expires, see README)
+  EXA_ENABLED              set true to enable Exa dashboard/admin fetches
   X_API_AUTH_TOKEN         X console auth_token cookie
   X_API_CT0                X console CSRF token (ct0 cookie)
   X_API_ACCOUNT_ID         X account ID (from console URL /accounts/{id})
   Codex: requires `codex login` for OAuth token (~/.codex/auth.json)
   Claude Code: reads local ~/.claude.json and ~/.claude/stats-cache.json
   Nous: reads ~/.hermes/auth.json providers.nous.access_token (auto)
+  Google AI Studio: reads ~/.hermes/auth/google_oauth.json (auto)
 """
 
 
@@ -98,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     parser = argparse.ArgumentParser(
-        description="Cross-provider balance + token usage.",
+        description="Cross-provider balance, spend, quota, and token usage.",
         usage="%(prog)s [-p PROVIDERS] [-m] [-j] [--history [--history-provider P] [--history-limit N]]",
         add_help=False,
     )
@@ -129,7 +130,11 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        rows = db.query(provider=provider, limit=args.history_limit)
+        rows = db.query(
+            provider=provider,
+            limit=args.history_limit,
+            provider_count=len(ALL_PROVIDERS),
+        )
         if args.json:
             print(render_history_json(rows))
         else:

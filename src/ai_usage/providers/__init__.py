@@ -19,7 +19,7 @@ class Provider(ABC):
     name: str = ""
     display_name: str = ""
     has_tokens: bool = False  # LLM providers with token tracking
-    is_subscription: bool = False  # Codex/Claude — detail section, not table row
+    is_subscription: bool = False  # Codex/Claude/Google — detail section, not table row
 
     def __init__(self, credentials: Credentials, http: HttpClient) -> None:
         self.creds = credentials

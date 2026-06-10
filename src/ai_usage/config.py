@@ -39,6 +39,7 @@ class Credentials:
     # Exa
     exa_service_key: str = ""
     exa_session_token: str = ""
+    exa_enabled: bool = False
 
     # X (Twitter) API
     x_api_auth_token: str = ""
@@ -112,6 +113,7 @@ def load_credentials(
         vastai_api_key=_get("VASTAI_API_KEY", vast_file),
         exa_service_key=_get("EXA_SERVICE_KEY"),
         exa_session_token=_get("EXA_SESSION_TOKEN"),
+        exa_enabled=_get("EXA_ENABLED").lower() == "true",
         x_api_auth_token=_get("X_API_AUTH_TOKEN"),
         x_api_ct0=_get("X_API_CT0"),
         x_api_account_id=_get("X_API_ACCOUNT_ID"),
