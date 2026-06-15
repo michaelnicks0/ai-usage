@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Active local workstation utility |
-| Source of truth | Markdown and Mermaid in this file |
+| Source of truth | Source-level Markdown and Mermaid in this file; C4 topology source in `docs/architecture/workspace.dsl` |
 | Runtime entry point | `ai_usage.cli:main` / `ai-usage` |
 | Implementation root | `src/ai_usage/` |
 | Legacy rendered companions | `architecture.html`, `data-architecture.html` |
@@ -12,7 +12,7 @@
 
 `ai-usage` is a Python CLI that fetches account balance, spend, subscription quota, and token-usage data across provider APIs, normalizes those responses into `ProviderData`, stores snapshots in SQLite, and renders table or JSON output.
 
-This document describes the current source-level architecture. The HTML files in the repo are historical rendered diagrams; Markdown/Mermaid is the canonical documentation source going forward.
+This document describes the current source-level architecture. The HTML files in the repo are historical rendered diagrams; Markdown/Mermaid is the canonical documentation source for this narrative. For C4 model-as-code topology and generated diagram artifacts, see [`docs/architecture/README.md`](architecture/README.md) and [`docs/architecture/workspace.dsl`](architecture/workspace.dsl).
 
 ## Component model
 

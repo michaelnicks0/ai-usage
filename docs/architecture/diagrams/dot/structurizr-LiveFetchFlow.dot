@@ -1,0 +1,64 @@
+digraph {
+  compound=true
+  graph [fontname="Arial", rankdir=LR, ranksep=1.0, nodesep=1.0]
+  node [fontname="Arial", shape=box, margin="0.4,0.3"]
+  edge [fontname="Arial"]
+  label=<<br /><font point-size="34">Dynamic View: ai-usage - CLI process</font><br /><font point-size="24">Live fetch sequence for ai-usage [-p providers] [-m] [-j].</font>>
+
+  1 [id=1,shape=rect, label=<<font point-size="34">Operator</font><br /><font point-size="19">[Person]</font><br /><br /><font point-size="24">Runs ai-usage from a shell to<br />inspect provider balances,<br />spend, subscription quotas,<br />token usage, and local<br />history.</font>>, style=filled, color="#2563eb", fillcolor="#dbeafe", fontcolor="#111827"]
+
+  15 [id=15,shape=rect, label=<<font point-size="34">Local developer CLIs</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Codex CLI app-server/login and<br />Claude Code CLI refresh paths<br />used for subscription quota<br />and OAuth refresh behavior.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+  16 [id=16,shape=rect, label=<<font point-size="34">Provider HTTP APIs</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">External APIs for DeepSeek,<br />xAI, Vast.ai, Exa, X Console,<br />Anthropic OAuth usage, Nous<br />Portal, Google OAuth, and<br />Google Cloud Code quota data.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+  17 [id=17,shape=rect, label=<<font point-size="34">Terminal / calling<br />process</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Receives stdout table or JSON<br />output from ai-usage.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+
+  subgraph cluster_2 {
+    margin=25
+    label=<<font point-size="24"><br />ai-usage</font><br /><font point-size="19">[Software System]</font>>
+    labelloc=b
+    color="#444444"
+    fontcolor="#444444"
+    fillcolor="#444444"
+
+    subgraph cluster_3 {
+      margin=25
+      label=<<font point-size="24"><br />CLI process</font><br /><font point-size="19">[Container: Python 3.10+ CLI]</font>>
+      labelloc=b
+      color="#444444"
+      fontcolor="#444444"
+      fillcolor="#444444"
+
+      10 [id=10,shape=rect, label=<<font point-size="34">Normalized data model</font><br /><font point-size="19">[Component: ai_usage.models]</font><br /><br /><font point-size="24">ProviderData and TokenData<br />dataclasses for balances,<br />spend, tokens, per-model rows,<br />provider extras, and meta<br />errors.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      11 [id=11,shape=rect, label=<<font point-size="34">Snapshot repository</font><br /><font point-size="19">[Component: ai_usage.db.SnapshotDB]</font><br /><br /><font point-size="24">Creates, writes, and queries<br />the local SQLite history<br />database.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      12 [id=12,shape=rect, label=<<font point-size="34">Renderer</font><br /><font point-size="19">[Component: ai_usage.render]</font><br /><br /><font point-size="24">Formats normalized live or<br />history data as aligned<br />terminal tables or JSON.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      4 [id=4,shape=rect, label=<<font point-size="34">Command router</font><br /><font point-size="19">[Component: ai_usage.cli]</font><br /><br /><font point-size="24">Parses CLI flags, validates<br />provider selection, chooses<br />live-fetch vs history mode,<br />and coordinates output.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      5 [id=5,shape=rect, label=<<font point-size="34">Credential loader</font><br /><font point-size="19">[Component: ai_usage.config]</font><br /><br /><font point-size="24">Loads API keys,<br />browser-session cookies,<br />timeout settings, and OAuth<br />state references from local<br />files and environment<br />variables.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      6 [id=6,shape=rect, label=<<font point-size="34">Provider registry</font><br /><font point-size="19">[Component: ai_usage.providers]</font><br /><br /><font point-size="24">Registers and constructs<br />Provider subclasses for<br />DeepSeek, xAI, Vast.ai, Exa, X<br />API, Codex, Claude Code, Nous,<br />and Google AI Studio.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      7 [id=7,shape=rect, label=<<font point-size="34">Fetch orchestrator</font><br /><font point-size="19">[Component: ai_usage.fetcher]</font><br /><br /><font point-size="24">Runs selected provider fetches<br />sequentially or concurrently<br />with a total timeout and<br />per-provider error isolation.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      8 [id=8,shape=rect, label=<<font point-size="34">Provider adapters</font><br /><font point-size="19">[Component: src/ai_usage/providers]</font><br /><br /><font point-size="24">Provider-specific modules<br />convert raw HTTP, local CLI,<br />and local file responses into<br />normalized ProviderData.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      9 [id=9,shape=rect, label=<<font point-size="34">HTTP client</font><br /><font point-size="19">[Component: ai_usage.http.HttpClient]</font><br /><br /><font point-size="24">urllib-based JSON client with<br />timeout, retry, and<br />non-retryable status handling.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+    }
+
+    13 [id=13,shape=cylinder, label=<<font point-size="34">Snapshot history<br />database</font><br /><font point-size="19">[Container: SQLite WAL file at ~/.hermes/ai-usage.db]</font><br /><br /><font point-size="24">Stores normalized provider<br />snapshots for --history<br />queries; raw provider payloads<br />are not stored.</font>>, style=filled, color="#d97706", fillcolor="#fef3c7", fontcolor="#111827"]
+  }
+
+  1 [id=1,shape=rect, label=<<font point-size="34">Operator</font><br /><font point-size="19">[Person]</font><br /><br /><font point-size="24">Runs ai-usage from a shell to<br />inspect provider balances,<br />spend, subscription quotas,<br />token usage, and local<br />history.</font>>, style=filled, color="#2563eb", fillcolor="#dbeafe", fontcolor="#111827"]
+  13 [id=13,shape=cylinder, label=<<font point-size="34">Snapshot history<br />database</font><br /><font point-size="19">[Container: SQLite WAL file at ~/.hermes/ai-usage.db]</font><br /><br /><font point-size="24">Stores normalized provider<br />snapshots for --history<br />queries; raw provider payloads<br />are not stored.</font>>, style=filled, color="#d97706", fillcolor="#fef3c7", fontcolor="#111827"]
+  15 [id=15,shape=rect, label=<<font point-size="34">Local developer CLIs</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Codex CLI app-server/login and<br />Claude Code CLI refresh paths<br />used for subscription quota<br />and OAuth refresh behavior.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+  16 [id=16,shape=rect, label=<<font point-size="34">Provider HTTP APIs</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">External APIs for DeepSeek,<br />xAI, Vast.ai, Exa, X Console,<br />Anthropic OAuth usage, Nous<br />Portal, Google OAuth, and<br />Google Cloud Code quota data.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+  17 [id=17,shape=rect, label=<<font point-size="34">Terminal / calling<br />process</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Receives stdout table or JSON<br />output from ai-usage.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+
+  1 -> 4 [id=20, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">1. Runs ai-usage with<br />provider/output flags</font><br /><font point-size="19">[shell]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  4 -> 5 [id=30, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">2. Load credentials and<br />timeout settings</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  4 -> 6 [id=31, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">3. Select selected<br />provider adapters</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  4 -> 7 [id=32, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">4. Fetch selected<br />providers</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  7 -> 8 [id=37, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">5. Call provider.fetch()</font><br /><font point-size="19">[ThreadPoolExecutor]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  8 -> 9 [id=38, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">6. Use retrying HTTP<br />client when applicable</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  8 -> 16 [id=41, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">7. Fetch raw<br />balance/spend/quota/token<br />data</font><br /><font point-size="19">[HTTPS]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  8 -> 15 [id=39, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">8. Use CLI-backed<br />quota/auth flows when<br />applicable</font><br /><font point-size="19">[subprocess]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  8 -> 10 [id=42, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">9. Normalize raw responses</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  4 -> 11 [id=33, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">10. Save fetched snapshot<br />rows</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  11 -> 13 [id=44, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">11. Insert normalized rows</font><br /><font point-size="19">[sqlite3]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  4 -> 12 [id=34, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">12. Render table or JSON</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  12 -> 17 [id=46, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">13. Write final report</font><br /><font point-size="19">[stdout]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+
+}

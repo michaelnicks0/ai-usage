@@ -1,0 +1,21 @@
+digraph {
+  compound=true
+  graph [fontname="Arial", rankdir=LR, ranksep=1.0, nodesep=1.0]
+  node [fontname="Arial", shape=box, margin="0.4,0.3"]
+  edge [fontname="Arial"]
+  label=<<br /><font point-size="34">System Context View: ai-usage</font><br /><font point-size="24">C1: ai-usage in its local workstation and provider-account ecosystem.</font>>
+
+  1 [id=1,shape=rect, label=<<font point-size="34">Operator</font><br /><font point-size="19">[Person]</font><br /><br /><font point-size="24">Runs ai-usage from a shell to<br />inspect provider balances,<br />spend, subscription quotas,<br />token usage, and local<br />history.</font>>, style=filled, color="#2563eb", fillcolor="#dbeafe", fontcolor="#111827"]
+  14 [id=14,shape=cylinder, label=<<font point-size="34">Local credential<br />files</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Credential and OAuth state<br />outside the repo:<br />~/.hermes/.env,<br />~/.config/vastai/vast_api_key,<br />~/.hermes/auth.json,<br />~/.hermes/auth/google_oauth.json,<br />~/.claude/.credentials.json,<br />~/.claude.json, and<br />~/.claude/stats-cache.json.</font>>, style=filled, color="#d97706", fillcolor="#fef3c7", fontcolor="#111827"]
+  15 [id=15,shape=rect, label=<<font point-size="34">Local developer CLIs</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Codex CLI app-server/login and<br />Claude Code CLI refresh paths<br />used for subscription quota<br />and OAuth refresh behavior.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+  16 [id=16,shape=rect, label=<<font point-size="34">Provider HTTP APIs</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">External APIs for DeepSeek,<br />xAI, Vast.ai, Exa, X Console,<br />Anthropic OAuth usage, Nous<br />Portal, Google OAuth, and<br />Google Cloud Code quota data.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+  17 [id=17,shape=rect, label=<<font point-size="34">Terminal / calling<br />process</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Receives stdout table or JSON<br />output from ai-usage.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+  2 [id=2,shape=rect, label=<<font point-size="34">ai-usage</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Python CLI that collects<br />cross-provider balance, spend,<br />quota, and token-usage data,<br />normalizes it, stores<br />snapshots, and renders table<br />or JSON output.</font>>, style=filled, color="#16a34a", fillcolor="#dcfce7", fontcolor="#111827"]
+
+  1 -> 2 [id=18, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">Requests current usage or<br />history reports</font><br /><font point-size="19">[shell]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  2 -> 16 [id=21, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">Fetches balances, spend,<br />quota, and token usage</font><br /><font point-size="19">[HTTPS]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  2 -> 14 [id=22, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">Reads credentials and<br />OAuth state</font><br /><font point-size="19">[filesystem]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  2 -> 15 [id=23, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">Delegates CLI-backed<br />quota/auth flows</font><br /><font point-size="19">[subprocess]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  2 -> 17 [id=29, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">Prints table or JSON<br />reports</font><br /><font point-size="19">[stdout]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+
+}

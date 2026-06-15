@@ -8,7 +8,7 @@ Cross-provider balance, spend, subscription quota, and token usage — one comma
 |---|---|
 | Runtime | Python CLI, `ai_usage.cli:main` |
 | Package root | `src/ai_usage/` |
-| Canonical architecture docs | [`docs/architecture.md`](docs/architecture.md), [`docs/data-architecture.md`](docs/data-architecture.md) |
+| Canonical architecture docs | C4 model: [`docs/architecture/workspace.dsl`](docs/architecture/workspace.dsl); source-level docs: [`docs/architecture.md`](docs/architecture.md), [`docs/data-architecture.md`](docs/data-architecture.md) |
 | Legacy rendered companions | [`architecture.html`](architecture.html), [`data-architecture.html`](data-architecture.html) |
 
 ### Architecture map
@@ -181,7 +181,7 @@ Nous Research uses subscription credits ($20+/mo) that deplete as you use manage
 
 Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) that tracks remaining fractions per-model group. No token tracking or dollar balance. Queried via the Cloud Code fetchAvailableModels internal endpoint, using locally configured Google developer credentials.
 
-[Architecture](docs/architecture.md) · [Data architecture](docs/data-architecture.md) · [Audit report](AUDIT.md) · Legacy renders: [architecture.html](architecture.html), [data-architecture.html](data-architecture.html)
+[C4 architecture](docs/architecture/README.md) · [Generated diagrams](docs/architecture/c4-diagrams.md) · [Source architecture](docs/architecture.md) · [Data architecture](docs/data-architecture.md) · [ADRs](docs/architecture/adr/README.md) · [Audit report](AUDIT.md) · Legacy renders: [architecture.html](architecture.html), [data-architecture.html](data-architecture.html)
 
 ## API endpoints
 

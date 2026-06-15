@@ -1,0 +1,56 @@
+# System Context
+
+> Generated Markdown wrapper for C4 view `SystemContext`. Canonical model: [`workspace.dsl`](../../workspace.dsl).
+
+<!-- Generated from Structurizr exports; refresh from docs/architecture/workspace.dsl. -->
+
+## Diagram
+
+![System Context](../dot-rendered/structurizr-SystemContext.svg)
+
+_Preferred Markdown display: Graphviz SVG. Mermaid source is retained below for text review._
+
+<details>
+<summary>Mermaid source</summary>
+
+```mermaid
+graph LR
+  linkStyle default fill:#ffffff
+
+  subgraph diagram ["System Context View: ai-usage"]
+    style diagram fill:#ffffff,stroke:#ffffff
+
+    1["<div style='font-weight: bold'>Operator</div><div style='font-size: 70%; margin-top: 0px'>[Person]</div><div style='font-size: 80%; margin-top:10px'>Runs ai-usage from a shell to<br />inspect provider balances,<br />spend, subscription quotas,<br />token usage, and local<br />history.</div>"]
+    style 1 fill:#dbeafe,stroke:#2563eb,color:#111827
+    14[("<div style='font-weight: bold'>Local credential files</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Credential and OAuth state<br />outside the repo:<br />~/.hermes/.env,<br />~/.config/vastai/vast_api_key,<br />~/.hermes/auth.json,<br />~/.hermes/auth/google_oauth.json,<br />~/.claude/.credentials.json,<br />~/.claude.json, and<br />~/.claude/stats-cache.json.</div>")]
+    style 14 fill:#fef3c7,stroke:#d97706,color:#111827
+    15["<div style='font-weight: bold'>Local developer CLIs</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Codex CLI app-server/login<br />and Claude Code CLI refresh<br />paths used for subscription<br />quota and OAuth refresh<br />behavior.</div>"]
+    style 15 fill:#f3e8ff,stroke:#9333ea,color:#111827
+    16["<div style='font-weight: bold'>Provider HTTP APIs</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>External APIs for DeepSeek,<br />xAI, Vast.ai, Exa, X Console,<br />Anthropic OAuth usage, Nous<br />Portal, Google OAuth, and<br />Google Cloud Code quota data.</div>"]
+    style 16 fill:#f3e8ff,stroke:#9333ea,color:#111827
+    17["<div style='font-weight: bold'>Terminal / calling process</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Receives stdout table or JSON<br />output from ai-usage.</div>"]
+    style 17 fill:#f3e8ff,stroke:#9333ea,color:#111827
+    2["<div style='font-weight: bold'>ai-usage</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Python CLI that collects<br />cross-provider balance,<br />spend, quota, and token-usage<br />data, normalizes it, stores<br />snapshots, and renders table<br />or JSON output.</div>"]
+    style 2 fill:#dcfce7,stroke:#16a34a,color:#111827
+
+    1-. "<div>Requests current usage or<br />history reports</div><div style='font-size: 70%'>[shell]</div>" .->2
+    2-. "<div>Fetches balances, spend,<br />quota, and token usage</div><div style='font-size: 70%'>[HTTPS]</div>" .->16
+    2-. "<div>Reads credentials and OAuth<br />state</div><div style='font-size: 70%'>[filesystem]</div>" .->14
+    2-. "<div>Delegates CLI-backed<br />quota/auth flows</div><div style='font-size: 70%'>[subprocess]</div>" .->15
+    2-. "<div>Prints table or JSON reports</div><div style='font-size: 70%'>[stdout]</div>" .->17
+
+  end
+```
+
+</details>
+
+## Derived artifacts
+
+| Artifact | Link |
+|---|---|
+| Mermaid source | [`structurizr-SystemContext.mmd`](../structurizr-SystemContext.mmd) |
+| Mermaid SVG | [`structurizr-SystemContext.svg`](../structurizr-SystemContext.svg) |
+| Mermaid PNG | [`structurizr-SystemContext.png`](../structurizr-SystemContext.png) |
+| DOT source | [`structurizr-SystemContext.dot`](../dot/structurizr-SystemContext.dot) |
+| Graphviz SVG | [`structurizr-SystemContext.svg`](../dot-rendered/structurizr-SystemContext.svg) |
+| Graphviz PNG | [`structurizr-SystemContext.png`](../dot-rendered/structurizr-SystemContext.png) |

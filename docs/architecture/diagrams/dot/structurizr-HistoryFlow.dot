@@ -1,0 +1,46 @@
+digraph {
+  compound=true
+  graph [fontname="Arial", rankdir=LR, ranksep=1.0, nodesep=1.0]
+  node [fontname="Arial", shape=box, margin="0.4,0.3"]
+  edge [fontname="Arial"]
+  label=<<br /><font point-size="34">Dynamic View: ai-usage - CLI process</font><br /><font point-size="24">History query sequence for ai-usage --history.</font>>
+
+  1 [id=1,shape=rect, label=<<font point-size="34">Operator</font><br /><font point-size="19">[Person]</font><br /><br /><font point-size="24">Runs ai-usage from a shell to<br />inspect provider balances,<br />spend, subscription quotas,<br />token usage, and local<br />history.</font>>, style=filled, color="#2563eb", fillcolor="#dbeafe", fontcolor="#111827"]
+
+  17 [id=17,shape=rect, label=<<font point-size="34">Terminal / calling<br />process</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Receives stdout table or JSON<br />output from ai-usage.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+
+  subgraph cluster_2 {
+    margin=25
+    label=<<font point-size="24"><br />ai-usage</font><br /><font point-size="19">[Software System]</font>>
+    labelloc=b
+    color="#444444"
+    fontcolor="#444444"
+    fillcolor="#444444"
+
+    subgraph cluster_3 {
+      margin=25
+      label=<<font point-size="24"><br />CLI process</font><br /><font point-size="19">[Container: Python 3.10+ CLI]</font>>
+      labelloc=b
+      color="#444444"
+      fontcolor="#444444"
+      fillcolor="#444444"
+
+      11 [id=11,shape=rect, label=<<font point-size="34">Snapshot repository</font><br /><font point-size="19">[Component: ai_usage.db.SnapshotDB]</font><br /><br /><font point-size="24">Creates, writes, and queries<br />the local SQLite history<br />database.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      12 [id=12,shape=rect, label=<<font point-size="34">Renderer</font><br /><font point-size="19">[Component: ai_usage.render]</font><br /><br /><font point-size="24">Formats normalized live or<br />history data as aligned<br />terminal tables or JSON.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+      4 [id=4,shape=rect, label=<<font point-size="34">Command router</font><br /><font point-size="19">[Component: ai_usage.cli]</font><br /><br /><font point-size="24">Parses CLI flags, validates<br />provider selection, chooses<br />live-fetch vs history mode,<br />and coordinates output.</font>>, style=filled, color="#22c55e", fillcolor="#f0fdf4", fontcolor="#111827"]
+    }
+
+    13 [id=13,shape=cylinder, label=<<font point-size="34">Snapshot history<br />database</font><br /><font point-size="19">[Container: SQLite WAL file at ~/.hermes/ai-usage.db]</font><br /><br /><font point-size="24">Stores normalized provider<br />snapshots for --history<br />queries; raw provider payloads<br />are not stored.</font>>, style=filled, color="#d97706", fillcolor="#fef3c7", fontcolor="#111827"]
+  }
+
+  1 [id=1,shape=rect, label=<<font point-size="34">Operator</font><br /><font point-size="19">[Person]</font><br /><br /><font point-size="24">Runs ai-usage from a shell to<br />inspect provider balances,<br />spend, subscription quotas,<br />token usage, and local<br />history.</font>>, style=filled, color="#2563eb", fillcolor="#dbeafe", fontcolor="#111827"]
+  13 [id=13,shape=cylinder, label=<<font point-size="34">Snapshot history<br />database</font><br /><font point-size="19">[Container: SQLite WAL file at ~/.hermes/ai-usage.db]</font><br /><br /><font point-size="24">Stores normalized provider<br />snapshots for --history<br />queries; raw provider payloads<br />are not stored.</font>>, style=filled, color="#d97706", fillcolor="#fef3c7", fontcolor="#111827"]
+  17 [id=17,shape=rect, label=<<font point-size="34">Terminal / calling<br />process</font><br /><font point-size="19">[Software System]</font><br /><br /><font point-size="24">Receives stdout table or JSON<br />output from ai-usage.</font>>, style=filled, color="#9333ea", fillcolor="#f3e8ff", fontcolor="#111827"]
+
+  1 -> 4 [id=20, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">1. Runs ai-usage --history</font><br /><font point-size="19">[shell]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  4 -> 11 [id=33, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">2. Query provider<br />snapshots</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  11 -> 13 [id=44, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">3. Read newest rows</font><br /><font point-size="19">[sqlite3]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  4 -> 12 [id=34, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">4. Render history table or<br />JSON</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+  12 -> 17 [id=46, label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" BGCOLOR="white"><TR><TD><font point-size="24">5. Write history report</font><br /><font point-size="19">[stdout]</font></TD></TR></TABLE>>, style="dashed", color="#475569", fontcolor="#475569"]
+
+}

@@ -7,8 +7,11 @@ Guidance for AI coding agents working in this repo. Keep changes surgical and ve
 | Document | Role |
 |---|---|
 | [`README.md`](README.md) | User-facing usage, provider table, API endpoints, credential setup. |
+| [`docs/architecture/README.md`](docs/architecture/README.md) | C4 model-as-code workflow, generated artifact contract, and verification gate. |
+| [`docs/architecture/workspace.dsl`](docs/architecture/workspace.dsl) | Canonical Structurizr C4 source for topology diagrams. |
 | [`docs/architecture.md`](docs/architecture.md) | Canonical Markdown/Mermaid architecture. |
 | [`docs/data-architecture.md`](docs/data-architecture.md) | Canonical normalized data model and field mapping. |
+| [`docs/architecture/adr/README.md`](docs/architecture/adr/README.md) | Architecture Decision Record index. |
 | [`AUDIT.md`](AUDIT.md) | Code quality audit history. |
 | [`architecture.html`](architecture.html) | Legacy rendered architecture companion. Do not edit unless explicitly regenerating rendered docs. |
 | [`data-architecture.html`](data-architecture.html) | Legacy rendered data companion. Do not edit unless explicitly regenerating rendered docs. |
@@ -53,7 +56,8 @@ src/ai_usage/
 4. Add any new credential fields to `src/ai_usage/config.py`.
 5. Add tests in `tests/test_providers/test_<name>.py`.
 6. Update `README.md`, `docs/architecture.md`, and `docs/data-architecture.md`.
-7. Keep provider-specific quirks inside the provider module unless an existing shared abstraction already fits.
+7. If provider topology, auth flow, or data boundaries change, update `docs/architecture/workspace.dsl`, regenerate `docs/architecture/diagrams/`, and add or supersede an ADR when the decision is long-lived.
+8. Keep provider-specific quirks inside the provider module unless an existing shared abstraction already fits.
 
 ### Code style
 
@@ -89,4 +93,4 @@ Tests should mock HTTP responses and local subprocess/file interactions. Do not 
 - `ProviderData.meta` is the expected place for provider-level failures, timeout markers, and partial-fetch context.
 - Codex uses the Codex CLI app-server JSON-RPC path, not a normal REST API.
 - Claude and Google data depend on local authenticated developer tooling/OAuth state.
-- Markdown/Mermaid docs are canonical; HTML files are legacy rendered companions unless explicitly regenerated.
+- `docs/architecture/workspace.dsl` is canonical for C4 topology; generated artifacts under `docs/architecture/diagrams/` must be regenerated from it. Source-level Markdown/Mermaid docs remain canonical for their narrative/data scope; HTML files are legacy rendered companions unless explicitly regenerated.

@@ -1,0 +1,64 @@
+# Containers
+
+> Generated Markdown wrapper for C4 view `Containers`. Canonical model: [`workspace.dsl`](../../workspace.dsl).
+
+<!-- Generated from Structurizr exports; refresh from docs/architecture/workspace.dsl. -->
+
+## Diagram
+
+![Containers](../dot-rendered/structurizr-Containers.svg)
+
+_Preferred Markdown display: Graphviz SVG. Mermaid source is retained below for text review._
+
+<details>
+<summary>Mermaid source</summary>
+
+```mermaid
+graph LR
+  linkStyle default fill:#ffffff
+
+  subgraph diagram ["Container View: ai-usage"]
+    style diagram fill:#ffffff,stroke:#ffffff
+
+    1["<div style='font-weight: bold'>Operator</div><div style='font-size: 70%; margin-top: 0px'>[Person]</div><div style='font-size: 80%; margin-top:10px'>Runs ai-usage from a shell to<br />inspect provider balances,<br />spend, subscription quotas,<br />token usage, and local<br />history.</div>"]
+    style 1 fill:#dbeafe,stroke:#2563eb,color:#111827
+    14[("<div style='font-weight: bold'>Local credential files</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Credential and OAuth state<br />outside the repo:<br />~/.hermes/.env,<br />~/.config/vastai/vast_api_key,<br />~/.hermes/auth.json,<br />~/.hermes/auth/google_oauth.json,<br />~/.claude/.credentials.json,<br />~/.claude.json, and<br />~/.claude/stats-cache.json.</div>")]
+    style 14 fill:#fef3c7,stroke:#d97706,color:#111827
+    15["<div style='font-weight: bold'>Local developer CLIs</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Codex CLI app-server/login<br />and Claude Code CLI refresh<br />paths used for subscription<br />quota and OAuth refresh<br />behavior.</div>"]
+    style 15 fill:#f3e8ff,stroke:#9333ea,color:#111827
+    16["<div style='font-weight: bold'>Provider HTTP APIs</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>External APIs for DeepSeek,<br />xAI, Vast.ai, Exa, X Console,<br />Anthropic OAuth usage, Nous<br />Portal, Google OAuth, and<br />Google Cloud Code quota data.</div>"]
+    style 16 fill:#f3e8ff,stroke:#9333ea,color:#111827
+    17["<div style='font-weight: bold'>Terminal / calling process</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Receives stdout table or JSON<br />output from ai-usage.</div>"]
+    style 17 fill:#f3e8ff,stroke:#9333ea,color:#111827
+
+    subgraph 2 ["ai-usage"]
+      style 2 fill:#ffffff,stroke:#16a34a,color:#16a34a
+
+      13[("<div style='font-weight: bold'>Snapshot history database</div><div style='font-size: 70%; margin-top: 0px'>[Container: SQLite WAL file at ~/.hermes/ai-usage.db]</div><div style='font-size: 80%; margin-top:10px'>Stores normalized provider<br />snapshots for --history<br />queries; raw provider<br />payloads are not stored.</div>")]
+      style 13 fill:#fef3c7,stroke:#d97706,color:#111827
+      3["<div style='font-weight: bold'>CLI process</div><div style='font-size: 70%; margin-top: 0px'>[Container: Python 3.10+ CLI]</div><div style='font-size: 80%; margin-top:10px'>Argparse-driven command<br />process exposed as<br />ai_usage.cli:main and the<br />ai-usage console script.</div>"]
+      style 3 fill:#e0f2fe,stroke:#0284c7,color:#111827
+    end
+
+    1-. "<div>Invokes ai-usage commands</div><div style='font-size: 70%'>[shell]</div>" .->3
+    3-. "<div>Reads credentials and OAuth<br />state</div><div style='font-size: 70%'>[filesystem]</div>" .->14
+    3-. "<div>Starts Codex and Claude<br />helper commands when required</div><div style='font-size: 70%'>[subprocess]</div>" .->15
+    3-. "<div>Calls provider APIs through<br />adapters</div><div style='font-size: 70%'>[HTTPS]</div>" .->16
+    3-. "<div>Writes and reads snapshots</div><div style='font-size: 70%'>[sqlite3]</div>" .->13
+    3-. "<div>Prints table or JSON reports</div><div style='font-size: 70%'>[stdout]</div>" .->17
+
+  end
+```
+
+</details>
+
+## Derived artifacts
+
+| Artifact | Link |
+|---|---|
+| Mermaid source | [`structurizr-Containers.mmd`](../structurizr-Containers.mmd) |
+| Mermaid SVG | [`structurizr-Containers.svg`](../structurizr-Containers.svg) |
+| Mermaid PNG | [`structurizr-Containers.png`](../structurizr-Containers.png) |
+| DOT source | [`structurizr-Containers.dot`](../dot/structurizr-Containers.dot) |
+| Graphviz SVG | [`structurizr-Containers.svg`](../dot-rendered/structurizr-Containers.svg) |
+| Graphviz PNG | [`structurizr-Containers.png`](../dot-rendered/structurizr-Containers.png) |
