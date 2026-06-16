@@ -19,9 +19,13 @@ class ExaProvider(Provider):
         data = ProviderData(models=OrderedDict())
 
         if not self.creds.exa_enabled and not os.environ.get("PYTEST_CURRENT_TEST"):
+            data.meta["skip_reason"] = "disabled"
+            data.meta["skip_detail"] = "set EXA_ENABLED=true"
             return data
 
         if not (self.creds.exa_service_key or self.creds.exa_session_token):
+            data.meta["skip_reason"] = "auth missing"
+            data.meta["skip_detail"] = "set EXA_SERVICE_KEY and/or EXA_SESSION_TOKEN"
             return data
 
         # Balance via dashboard session token

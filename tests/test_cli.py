@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from ai_usage.cli import main
@@ -29,6 +30,20 @@ class TestCLI:
         assert result == 1
         captured = capsys.readouterr()
         assert "Unknown provider" in captured.err
+
+    @patch("ai_usage.providers.nous.refresh_nous_auth")
+    def test_refresh_auth_nous(self, mock_refresh, capsys):
+        mock_refresh.return_value = SimpleNamespace(
+            ok=True,
+            message="Nous token refreshed successfully.",
+        )
+
+        result = main(["--refresh-auth", "nous"])
+
+        assert result == 0
+        captured = capsys.readouterr()
+        assert "Nous token refreshed successfully." in captured.out
+        mock_refresh.assert_called_once_with()
 
     def test_history_unknown_provider(self, capsys):
         result = main(["--history", "--history-provider", "nonexistent"])

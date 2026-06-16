@@ -66,6 +66,7 @@ Google AI Studio  Ultra 20x  Gemini 3.5 Flash (High)       100%      4h59m
 ./ai-usage --history                 # last 10 fetch groups (all providers)
 ./ai-usage --history --history-provider xai  # last 10 rows for xAI only
 ./ai-usage --history --history-limit 30  # last 30 fetch groups
+./ai-usage --refresh-auth nous       # refresh cached Nous OAuth token
 ```
 
 ### JSON output
@@ -190,11 +191,11 @@ Codex uses its own data model: session usage %, weekly usage %, and plan type. N
 
 OpenRouter reports account credits and all-time usage through `/credits`; `ai-usage` displays remaining credits as `total_credits - total_usage`. Period spend comes from the current API key's `usage_monthly` field from `/key`. No aggregate token data is exposed by those endpoints.
 
-Exa is skipped unless `EXA_ENABLED=true`; this keeps the default all-provider run from making slow or rate-limited dashboard/admin calls.
+Exa is skipped unless `EXA_ENABLED=true`; this keeps the default all-provider run from making slow or rate-limited dashboard/admin calls. Skipped providers remain visible: table output prints the skip reason in the `Spend` column, and JSON output includes `status: "skipped"`, `reason`, and a safe `detail` string.
 
 Claude Code uses subscription/rate-limit windows and local/OAuth usage state. Its model details do not map cleanly to the generic dollar-balance rows.
 
-Nous Research uses subscription credits ($20+/mo) that deplete as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API. Stored in the `api` JSON branch (not `subscription`) since its credit model behaves like API credits.
+Nous Research uses subscription credits ($20+/mo) that deplete as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API with automatic refresh-token retry when Hermes auth state includes a Nous `refresh_token`. Stored in the `api` JSON branch (not `subscription`) since its credit model behaves like API credits.
 
 Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) that tracks remaining fractions per-model group. No token tracking or dollar balance. Queried via the Cloud Code fetchAvailableModels internal endpoint, using locally configured Google developer credentials.
 
@@ -257,13 +258,19 @@ codex login
 
 Claude Code reads local config files automatically (`~/.claude.json`, `~/.claude/stats-cache.json`, `~/.claude/.credentials.json`). No separate setup is needed beyond having Claude Code installed and authenticated. If the cached OAuth access token is expired or the usage endpoint returns an auth/rate-limit status, `ai-usage` runs a minimal Claude Code CLI prompt to let Claude refresh its own credentials, then retries the usage endpoint with the fresh token.
 
-Nous reads the OAuth token from `~/.hermes/auth.json` (set up by `hermes model` or the Hermes setup wizard). No manual credential needed if you've already configured Nous Portal as a provider in Hermes.
+Nous reads the OAuth token from `~/.hermes/auth.json` (set up by `hermes model` or the Hermes setup wizard). No manual credential needed if you've already configured Nous Portal as a provider in Hermes. To force a cached-token refresh without running the full provider table:
+
+```bash
+ai-usage --refresh-auth nous
+```
 
 Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oauth.json` (written by the Hermes CLI when authenticating the `google-agy` provider). It handles refresh-token rotation, retries once after auth/rate-limit failures from the Cloud Code quota endpoint, and resolves the GCP project ID dynamically.
 
 ### Credential refresh
 
 Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. Claude Code, Nous, Google, and Codex use OAuth-managed credentials through their owning tools. Codex multi-account display reads Hermes's `openai-codex` credential pool directly; refresh or add accounts with Hermes auth commands. OpenRouter and the other plain API-key credentials are long-lived until manually rotated.
+
+**Nous:** OAuth refresh runs automatically before token expiry, after a `401`/`403` account response, and on demand with `ai-usage --refresh-auth nous`. If Hermes auth state has no Nous `refresh_token`, the row renders `auth missing`/`auth failed`; re-authenticate with `hermes auth add` or `hermes model` to restore refreshable state.
 
 **DeepSeek:** When token usage shows `—`, refresh:
 1. Open https://platform.deepseek.com/usage in Chrome

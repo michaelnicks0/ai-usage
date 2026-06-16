@@ -6,12 +6,22 @@ from ai_usage.providers.exa import ExaProvider
 
 
 class TestExaProvider:
+    def test_disabled_reports_skip_reason(self, mock_http, credentials, monkeypatch):
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        credentials.exa_enabled = False
+        provider = ExaProvider(credentials, mock_http)
+        data = provider.fetch()
+        assert data.meta["skip_reason"] == "disabled"
+        assert data.meta["skip_detail"] == "set EXA_ENABLED=true"
+        mock_http.get_json.assert_not_called()
+
     def test_no_credentials_returns_empty(self, mock_http, credentials):
         credentials.exa_service_key = ""
         credentials.exa_session_token = ""
         provider = ExaProvider(credentials, mock_http)
         data = provider.fetch()
         assert data.balance is None
+        assert data.meta["skip_reason"] == "auth missing"
 
     def test_balance_via_session(self, mock_http, credentials):
         mock_http.get_json.return_value = {"orbCreditsInCents": 500}

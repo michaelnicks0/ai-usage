@@ -102,6 +102,20 @@ class TestRenderJson:
         parsed = json.loads(result)
         assert parsed["api"]["nous"]["credits_remaining"] == 21.74
 
+    def test_skip_reason_json(self):
+        pd = ProviderData(
+            meta={
+                "skip_reason": "disabled",
+                "skip_detail": "set EXA_ENABLED=true",
+            },
+        )
+        result = render_json({"exa": pd})
+        parsed = json.loads(result)
+        exa = parsed["api"]["exa"]
+        assert exa["status"] == "skipped"
+        assert exa["reason"] == "disabled"
+        assert exa["detail"] == "set EXA_ENABLED=true"
+
 
 class TestRenderTable:
     def test_empty(self):
@@ -118,6 +132,16 @@ class TestRenderTable:
         assert "500,000" in result    # input
         assert "200,000" in result    # output
         assert "1,700,000" in result  # total
+
+    def test_skip_reason_table(self):
+        result = render_table({
+            "exa": ProviderData(meta={"skip_reason": "disabled"}),
+            "nous": ProviderData(meta={"skip_reason": "auth missing"}),
+        })
+        assert "Exa" in result
+        assert "disabled" in result
+        assert "Nous" in result
+        assert "auth missing" in result
 
     def test_codex_detail_section(self):
         pd = ProviderData(

@@ -25,7 +25,7 @@ flowchart LR
         tokens["tokens: TokenData"]:::datastore
         models["models: OrderedDict[str, TokenData]"]:::datastore
         extra["extra: provider-specific details"]:::datastore
-        meta["meta: errors/timeouts/context"]:::datastore
+        meta["meta: errors/timeouts/skip reasons/context"]:::datastore
     end
 
     providerData --> balance
@@ -49,11 +49,11 @@ flowchart LR
 | xAI | Management billing balance and invoice preview | `balance`, `spent`, aggregate/model `TokenData` |
 | OpenRouter | Credits and current-key APIs | `balance` as remaining credits, `spent` as current key month-to-date usage; tokens are not exposed |
 | Vast.ai | Current user credit and charges APIs | `balance`, `spent`; tokens are not applicable |
-| Exa | Dashboard balance and admin usage APIs | `balance`, `spent`; tokens are not applicable; provider fetch is skipped unless `EXA_ENABLED=true` |
+| Exa | Dashboard balance and admin usage APIs | `balance`, `spent`; tokens are not applicable; disabled or unconfigured runs set `meta.skip_reason` so the row renders `disabled` or `auth missing` instead of bare blanks |
 | X API | Console credits and usage APIs | `balance`, calculated `spent`; tokens are not applicable |
 | Codex | Preferred: Codex usage API per Hermes `credential_pool.openai-codex` entry; fallback: Codex app-server rate-limit JSON-RPC | `extra.accounts` maps Hermes account labels to quota rows; dollar/token fields are not applicable; per-account failures stay visible without hiding other accounts; fallback app-server auth failures run one interactive `codex login` retry on TTY, otherwise set `meta.auth_error` and stay visible as an `auth failed` quota row |
 | Claude Code | OAuth usage endpoint, local usage files, and Claude CLI refresh | `extra` quota rows and provider-specific model details; `meta.token_refreshed`, `meta.oauth_retry_status`, and `meta.refresh_error` describe refresh behavior when needed |
-| Nous | Portal OAuth account/subscription endpoints | `balance`/credits plus subscription `extra` |
+| Nous | Portal OAuth account/subscription and token endpoints | `balance`/credits plus subscription `extra`; missing auth sets `meta.skip_reason`, and OAuth refresh sets `meta.token_refreshed`/`meta.oauth_retry_status` when automatic retry is needed |
 | Google AI Studio | Cloud Code available-models/quota endpoint | `extra` model quota rows; cached token refreshes before expiry and once after auth/rate-limit endpoint failures |
 
 ## Token model

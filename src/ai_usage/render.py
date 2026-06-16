@@ -98,6 +98,23 @@ def _token_pcts(d: ProviderData) -> tuple[float, float]:
     return 0.0, 0.0
 
 
+def _skip_reason(d: ProviderData) -> str:
+    """Human-safe provider skip/unavailable reason for display."""
+    reason = d.meta.get("skip_reason") if d.meta else None
+    return str(reason) if reason else ""
+
+
+def _has_reportable_values(d: ProviderData) -> bool:
+    """Return True when a row has real account data, not just metadata."""
+    return bool(
+        d.balance is not None
+        or d.spent is not None
+        or d.tokens.total
+        or d.models
+        or d.extra
+    )
+
+
 def _model_entry(d: ProviderData) -> dict[str, Any]:
     hit, miss = _token_pcts(d)
     return {
@@ -184,6 +201,14 @@ def render_json(
                     except Exception:
                         pass
 
+        reason = _skip_reason(d)
+        if reason and not _has_reportable_values(d):
+            entry["status"] = "skipped"
+            entry["reason"] = reason
+            detail = d.meta.get("skip_detail")
+            if detail:
+                entry["detail"] = detail
+
         if show_model and d.models:
             entry["models"] = OrderedDict()
             for mname, md in d.models.items():
@@ -255,6 +280,9 @@ def render_table(
             return fmt_amt(d.balance)
 
         def _fmt_spend(d: ProviderData) -> str:
+            reason = _skip_reason(d)
+            if reason and not _has_reportable_values(d):
+                return reason
             if d.extra:
                 sess = d.extra.get("session")
                 if sess:

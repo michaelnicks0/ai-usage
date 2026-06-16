@@ -50,6 +50,7 @@ Usage:
   ai-usage --history --history-provider=xai  show last 10 xAI snapshots
   ai-usage --history --history-limit 30  show last 30 snapshots
   ai-usage --history -j              JSON output for history
+  ai-usage --refresh-auth nous       refresh cached Nous OAuth token
   ai-usage help                     this text
 
 Options:
@@ -59,6 +60,7 @@ Options:
       --history             query saved snapshots instead of live fetch
       --history-provider NAME  filter history to one provider
       --history-limit N     number of snapshots to show (default: 10)
+      --refresh-auth PROVIDER  refresh provider OAuth state and exit (nous)
   -h, --help                this text
 
 Output fields (table):
@@ -115,12 +117,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--history", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--history-provider", default=None, help=argparse.SUPPRESS)
     parser.add_argument("--history-limit", type=int, default=10, help=argparse.SUPPRESS)
+    parser.add_argument("--refresh-auth", choices=["nous"], help=argparse.SUPPRESS)
     parser.add_argument("--help", "-h", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     if args.help:
         print(HELP_TEXT)
         return 0
+
+    if args.refresh_auth:
+        if args.refresh_auth == "nous":
+            from ai_usage.providers.nous import refresh_nous_auth
+
+            result = refresh_nous_auth()
+            print(result.message)
+            return 0 if result.ok else 1
 
     # ── History mode ──
     if args.history:
