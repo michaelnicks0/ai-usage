@@ -62,6 +62,21 @@ class TestRenderJson:
         assert "subscription" in parsed
         assert parsed["subscription"]["codex"]["plan_type"] == "plus"
 
+    def test_codex_multi_account_json(self):
+        pd = ProviderData(
+            extra={
+                "accounts": OrderedDict([
+                    ("primary", {"plan_type": "plus", "session": {"remaining_pct": 77}}),
+                    ("wife-codex-pro", {"plan_type": "pro", "weekly": {"remaining_pct": 60}}),
+                ])
+            },
+        )
+        result = render_json({"codex": pd})
+        parsed = json.loads(result)
+        accounts = parsed["subscription"]["codex"]["accounts"]
+        assert list(accounts) == ["primary", "wife-codex-pro"]
+        assert accounts["wife-codex-pro"]["plan_type"] == "pro"
+
     def test_models_flag(self):
         td = TokenData(input=500, cached=300, output=100)
         pd = ProviderData(balance=25.0, spent=5.0, tokens=td,
@@ -118,6 +133,27 @@ class TestRenderTable:
         assert "Subscription Quotas" in result
         assert "Codex" in result
         assert "55%" in result
+
+    def test_codex_multi_account_detail_section(self):
+        pd = ProviderData(
+            extra={
+                "accounts": OrderedDict([
+                    ("primary", {
+                        "plan_type": "plus",
+                        "session": {"remaining_pct": 77, "resets_at": None},
+                    }),
+                    ("wife-codex-pro", {
+                        "plan_type": "pro",
+                        "weekly": {"remaining_pct": 60, "resets_at": None},
+                    }),
+                ])
+            },
+        )
+        result = render_table({"codex": pd})
+        assert "Codex (primary)" in result
+        assert "Codex (wife-codex-pro)" in result
+        assert "77%" in result
+        assert "60%" in result
 
     def test_codex_auth_failure_fallback_is_visible(self):
         pd = ProviderData(

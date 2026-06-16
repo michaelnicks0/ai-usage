@@ -64,13 +64,22 @@ class SnapshotDB:
     ) -> list[tuple]:
         """Return snapshot rows, newest first."""
         if provider:
-            rows = self.conn.execute(
-                "SELECT timestamp, provider, balance, spend, "
-                "tokens_input, tokens_cached, tokens_output "
-                "FROM snapshots WHERE provider=? "
-                "ORDER BY timestamp DESC LIMIT ?",
-                (provider, limit),
-            ).fetchall()
+            if provider == "codex":
+                rows = self.conn.execute(
+                    "SELECT timestamp, provider, balance, spend, "
+                    "tokens_input, tokens_cached, tokens_output "
+                    "FROM snapshots WHERE provider=? OR provider LIKE ? "
+                    "ORDER BY timestamp DESC LIMIT ?",
+                    (provider, "codex:%", limit),
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    "SELECT timestamp, provider, balance, spend, "
+                    "tokens_input, tokens_cached, tokens_output "
+                    "FROM snapshots WHERE provider=? "
+                    "ORDER BY timestamp DESC LIMIT ?",
+                    (provider, limit),
+                ).fetchall()
         else:
             rows = self.conn.execute(
                 "SELECT timestamp, provider, balance, spend, "

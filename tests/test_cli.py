@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import OrderedDict
 from unittest.mock import MagicMock, patch
 
 from ai_usage.cli import main
@@ -53,6 +54,32 @@ class TestCLI:
         captured = capsys.readouterr()
         assert '"deepseek"' in captured.out
         assert "10.0" in captured.out
+
+    @patch("ai_usage.cli.fetch_all")
+    @patch("ai_usage.cli.SnapshotDB")
+    def test_codex_multi_account_saves_account_qualified_snapshots(self, mock_db, mock_fetch, capsys):
+        from ai_usage.models import ProviderData
+
+        mock_fetch.return_value = {
+            "codex": ProviderData(
+                extra={
+                    "accounts": OrderedDict([
+                        ("primary", {"credits": {"balance": 0}}),
+                        ("wife-codex-pro", {"credits": {"balance": 0}}),
+                    ])
+                },
+            ),
+        }
+        mock_db_instance = MagicMock()
+        mock_db.return_value = mock_db_instance
+
+        result = main(["-j", "-p", "codex"])
+
+        assert result == 0
+        saved_providers = [call.args[0] for call in mock_db_instance.save.call_args_list]
+        assert saved_providers == ["codex:primary", "codex:wife-codex-pro"]
+        captured = capsys.readouterr()
+        assert "wife-codex-pro" in captured.out
 
     @patch("ai_usage.cli.SnapshotDB")
     def test_history_empty(self, mock_db, capsys):

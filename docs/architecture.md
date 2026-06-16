@@ -28,7 +28,7 @@ flowchart TB
 
     config --> hermesEnv[("~/.hermes/.env")]:::datastore
     config --> vastKey[("~/.config/vastai/vast_api_key")]:::datastore
-    config --> nousAuth[("~/.hermes/auth.json")]:::datastore
+    config --> nousAuth[("~/.hermes/auth.json<br/>Nous + Codex pool")]:::datastore
     config --> googleAuth[("~/.hermes/auth/google_oauth.json")]:::datastore
 
     registry --> providers["Provider modules<br/>deepseek, xai, openrouter, vastai, exa, x, codex, claude, nous, google"]:::process
@@ -37,7 +37,7 @@ flowchart TB
     providers --> http
 
     http --> providerApis["External provider APIs"]:::external
-    providers --> localCLIs["Local CLIs / files<br/>Codex, Claude, Google OAuth"]:::external
+    providers --> localCLIs["Local CLIs / files<br/>Codex fallback, Claude, Google OAuth"]:::external
 
     providers --> normalized["ProviderData<br/>balance, spend, tokens, models, extra, meta"]:::datastore
     normalized --> db
@@ -90,7 +90,7 @@ sequenceDiagram
 | `vastai` | Vast.ai | Balance and spend | Vast.ai user and charges APIs |
 | `exa` | Exa | Balance and spend | Exa dashboard/admin APIs |
 | `x` | X API | Credit balance and spend | X console API |
-| `codex` | Codex | Subscription/session quota with interactive auth-retry fallback | `codex app-server` JSON-RPC |
+| `codex` | Codex | Subscription/session quota per Hermes credential-pool account with interactive CLI fallback | Hermes `credential_pool.openai-codex` + Codex usage API; fallback `codex app-server` JSON-RPC |
 | `claude` | Claude Code | Subscription/session quota and local usage | Anthropic OAuth usage API + Claude local files + Claude CLI refresh |
 | `nous` | Nous | Subscription credits | Nous Portal OAuth API |
 | `google` | Google AI Studio | Model quota rows with OAuth refresh retry | Cloud Code internal model/quota endpoint |
@@ -98,8 +98,8 @@ sequenceDiagram
 ## Data boundaries
 
 - Credential values live outside the repo and must not be copied into Markdown.
-- Provider errors are normalized into `ProviderData.meta` rather than crashing the whole table where possible; Codex auth failures trigger one interactive `codex login` retry on TTY and otherwise render as `auth failed` instead of disappearing from the subscription table.
-- `SnapshotDB` stores normalized numeric output for history; raw provider payloads are not the documentation source.
+- Provider errors are normalized into `ProviderData.meta` rather than crashing the whole table where possible; Codex pool-account failures stay account-scoped and render as `auth failed`/`api error` rows without hiding other Codex accounts. The legacy single-account app-server fallback still triggers one interactive `codex login` retry on TTY and otherwise renders as `auth failed`.
+- `SnapshotDB` stores normalized numeric output for history; raw provider payloads are not the documentation source. Multi-account Codex snapshots are stored under account-qualified provider keys such as `codex:primary` so history does not collapse separate subscriptions.
 - Codex, Claude, Google, and Nous have quota/subscription semantics that do not map cleanly to a simple dollar balance row.
 - Exa dashboard/admin calls are intentionally disabled unless `EXA_ENABLED=true` is loaded from the environment or `~/.hermes/.env`.
 - Claude OAuth refresh is delegated to the Claude Code CLI with a minimal prompt when the cached access token is near expiry or the usage endpoint rejects it with an auth/rate-limit status.

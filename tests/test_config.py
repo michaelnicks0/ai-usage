@@ -8,7 +8,7 @@ import tempfile
 
 import pytest
 
-from ai_usage.config import Credentials, _read_env_file, load_credentials
+from ai_usage.config import Credentials, CodexAccountCredential, _read_env_file, load_credentials
 
 
 class TestReadEnvFile:
@@ -83,6 +83,44 @@ class TestLoadCredentials:
     def test_missing_nous_auth_is_graceful(self):
         creds = load_credentials(nous_auth_file="/nonexistent/auth.json")
         assert creds.nous_access_token == ""
+
+    def test_loads_codex_credential_pool_from_hermes_auth(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump({
+                "credential_pool": {
+                    "openai-codex": [
+                        {
+                            "label": "primary-codex",
+                            "source": "device_code",
+                            "access_token": "access-1",
+                            "refresh_token": "refresh-1",
+                            "base_url": "https://chatgpt.com/backend-api/codex",
+                        },
+                        {
+                            "label": "wife-codex-pro",
+                            "source": "manual:device_code",
+                            "access_token": "access-2",
+                            "refresh_token": "refresh-2",
+                        },
+                        {"label": "missing-token"},
+                    ],
+                }
+            }, f)
+            auth_path = f.name
+        try:
+            creds = load_credentials(
+                env_file="/nonexistent/.env",
+                nous_auth_file=auth_path,
+                codex_auth_file=auth_path,
+            )
+        finally:
+            os.unlink(auth_path)
+
+        assert len(creds.codex_accounts) == 2
+        assert isinstance(creds.codex_accounts[0], CodexAccountCredential)
+        assert creds.codex_accounts[0].label == "primary-codex"
+        assert creds.codex_accounts[1].label == "wife-codex-pro"
+        assert creds.codex_accounts[1].base_url == "https://chatgpt.com/backend-api/codex"
 
     def test_vast_file_fallback(self, monkeypatch):
         # Clear any real VASTAI_API_KEY env var so fallback file is used

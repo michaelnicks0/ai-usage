@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import shutil
@@ -9,7 +10,9 @@ import subprocess
 import threading
 import time
 from collections import OrderedDict
+from urllib.error import HTTPError
 
+from ai_usage.config import CodexAccountCredential
 from ai_usage.models import ProviderData
 from ai_usage.providers import Provider, registry
 
@@ -58,6 +61,95 @@ def _can_interactive_login() -> bool:
     return os.isatty(0) and os.isatty(1)
 
 
+def _codex_usage_url(base_url: str) -> str:
+    """Return the Codex usage endpoint for a backend/API base URL."""
+    normalized = (base_url or "").strip().rstrip("/")
+    if not normalized:
+        normalized = "https://chatgpt.com/backend-api/codex"
+    if normalized.endswith("/codex"):
+        normalized = normalized[: -len("/codex")]
+    if "/backend-api" in normalized:
+        return normalized + "/wham/usage"
+    return normalized + "/api/codex/usage"
+
+
+def _decode_jwt_payload(token: str) -> dict:
+    """Decode an OAuth JWT payload without logging or validating secrets."""
+    try:
+        parts = token.split(".")
+        if len(parts) < 2:
+            return {}
+        payload = parts[1]
+        payload += "=" * ((4 - len(payload) % 4) % 4)
+        decoded = base64.urlsafe_b64decode(payload.encode())
+        parsed = json.loads(decoded)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        return {}
+
+
+def _codex_account_id(token: str) -> str | None:
+    """Extract ChatGPT account id from a Codex OAuth token, if present."""
+    claims = _decode_jwt_payload(token)
+    auth_claims = claims.get("https://api.openai.com/auth", {})
+    if not isinstance(auth_claims, dict):
+        return None
+    account_id = auth_claims.get("chatgpt_account_id")
+    if isinstance(account_id, str) and account_id.strip():
+        return account_id.strip()
+    return None
+
+
+def _codex_plan_type(token: str) -> str | None:
+    """Extract plan type from a Codex OAuth token, if present."""
+    claims = _decode_jwt_payload(token)
+    auth_claims = claims.get("https://api.openai.com/auth", {})
+    if not isinstance(auth_claims, dict):
+        return None
+    plan_type = auth_claims.get("chatgpt_plan_type")
+    if isinstance(plan_type, str) and plan_type.strip():
+        return plan_type.strip()
+    return None
+
+
+def _clean_percent(value: float) -> int | float:
+    """Keep percentage output compact while preserving fractional values."""
+    rounded = round(value, 1)
+    return int(rounded) if rounded.is_integer() else rounded
+
+
+def _usage_window(window: dict, label: str) -> dict | None:
+    """Normalize one Codex usage API rate-limit window."""
+    used = window.get("used_percent")
+    if used is None:
+        return None
+    try:
+        used_pct = float(used)
+    except (TypeError, ValueError):
+        return None
+
+    reset_at = window.get("reset_at")
+    try:
+        resets_at = int(float(reset_at)) if reset_at is not None else None
+    except (TypeError, ValueError):
+        resets_at = None
+
+    duration = window.get("limit_window_seconds")
+    try:
+        duration_mins = int(float(duration) / 60) if duration is not None else 0
+    except (TypeError, ValueError):
+        duration_mins = 0
+
+    remaining_pct = max(0.0, 100.0 - used_pct)
+    return {
+        "label": label,
+        "used_pct": _clean_percent(used_pct),
+        "remaining_pct": _clean_percent(remaining_pct),
+        "duration_mins": duration_mins,
+        "resets_at": resets_at,
+    }
+
+
 @registry.register
 class CodexProvider(Provider):
     name = "codex"
@@ -88,6 +180,113 @@ class CodexProvider(Provider):
             node_dir = os.path.dirname(node_bin)
             env["PATH"] = node_dir + os.pathsep + env.get("PATH", "")
         return env
+
+    def _fetch_hermes_account(self, account: CodexAccountCredential) -> dict:
+        """Fetch one Hermes credential-pool Codex account via usage API."""
+        headers = {
+            "Authorization": f"Bearer {account.access_token}",
+            "Accept": "application/json",
+            "User-Agent": "codex-cli",
+        }
+        account_id = _codex_account_id(account.access_token)
+        if account_id:
+            headers["ChatGPT-Account-Id"] = account_id
+
+        payload = self.http.get_json(
+            _codex_usage_url(account.base_url),
+            headers,
+            timeout=self.creds.http_timeout,
+        )
+        if not isinstance(payload, dict):
+            raise ValueError("Codex usage endpoint returned non-object JSON")
+
+        rate_limit = payload.get("rate_limit") or {}
+        if not isinstance(rate_limit, dict):
+            rate_limit = {}
+
+        entry = {
+            "label": account.label,
+            "source": account.source,
+            "plan_type": (
+                payload.get("plan_type")
+                or _codex_plan_type(account.access_token)
+                or "unknown"
+            ),
+        }
+        session = _usage_window(rate_limit.get("primary_window") or {}, "Session")
+        weekly = _usage_window(rate_limit.get("secondary_window") or {}, "Weekly")
+        if session:
+            entry["session"] = session
+        if weekly:
+            entry["weekly"] = weekly
+
+        credits = payload.get("credits") or {}
+        if isinstance(credits, dict):
+            entry["credits"] = {
+                "balance": credits.get("balance", "0"),
+                "has_credits": bool(credits.get("has_credits")),
+                "unlimited": bool(credits.get("unlimited")),
+            }
+        return entry
+
+    def _fetch_hermes_accounts(self) -> ProviderData:
+        """Fetch all Hermes credential-pool Codex accounts."""
+        data = ProviderData(models=OrderedDict())
+        accounts: OrderedDict[str, dict] = OrderedDict()
+        errors: dict[str, str] = {}
+
+        for index, account in enumerate(self.creds.codex_accounts, start=1):
+            label = account.label or f"account-{index}"
+            try:
+                accounts[label] = self._fetch_hermes_account(account)
+            except HTTPError as exc:
+                reason = "auth failed" if exc.code in {401, 403} else f"http {exc.code}"
+                accounts[label] = {
+                    "label": label,
+                    "source": account.source,
+                    "plan_type": _codex_plan_type(account.access_token) or "unknown",
+                    "error": reason,
+                }
+                errors[label] = reason
+            except Exception as exc:
+                accounts[label] = {
+                    "label": label,
+                    "source": account.source,
+                    "plan_type": _codex_plan_type(account.access_token) or "unknown",
+                    "error": "api error",
+                }
+                errors[label] = exc.__class__.__name__
+
+        data.extra = {"accounts": accounts}
+        if errors:
+            data.meta["account_errors"] = errors
+            if len(errors) == len(accounts) and all(
+                reason == "auth failed" for reason in errors.values()
+            ):
+                data.meta["auth_error"] = True
+
+        # Compatibility for existing single-account render/tests/consumers.
+        if len(accounts) == 1:
+            only = next(iter(accounts.values()))
+            for key in ("plan_type", "session", "weekly", "credits"):
+                if key in only:
+                    data.extra[key] = only[key]
+
+        total_balance = 0.0
+        saw_balance = False
+        for account_data in accounts.values():
+            credits = account_data.get("credits") or {}
+            if not isinstance(credits, dict):
+                continue
+            try:
+                total_balance += float(credits.get("balance", 0) or 0)
+                saw_balance = True
+            except (TypeError, ValueError):
+                pass
+        if saw_balance:
+            data.balance = total_balance
+
+        return data
 
     def _run_login(self, env: dict[str, str], data: ProviderData) -> bool:
         """Run interactive `codex login` once when app-server auth is stale."""
@@ -247,6 +446,9 @@ class CodexProvider(Provider):
         return data
 
     def fetch(self) -> ProviderData:
+        if self.creds.codex_accounts:
+            return self._fetch_hermes_accounts()
+
         env = self._env()
         data = self._fetch_once(env)
         rpc_error = data.meta.get("rpc_error")

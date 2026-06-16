@@ -22,6 +22,25 @@ def _read_env_file(path: str) -> dict[str, str]:
 
 
 @dataclass
+class CodexAccountCredential:
+    """One Hermes-managed Codex OAuth credential.
+
+    Token values are carried only in memory so the Codex provider can query
+    subscription quota. Renderers must never expose them.
+    """
+
+    label: str
+    access_token: str
+    refresh_token: str = ""
+    base_url: str = "https://chatgpt.com/backend-api/codex"
+    source: str = ""
+    last_refresh: str = ""
+    last_status: str | None = None
+    last_error_message: str | None = None
+    last_error_reset_at: float | None = None
+
+
+@dataclass
 class Credentials:
     """All provider credentials, loaded once at startup."""
 
@@ -52,6 +71,9 @@ class Credentials:
     # Nous
     nous_access_token: str = ""
 
+    # Codex / ChatGPT subscription accounts from Hermes credential pool
+    codex_accounts: list[CodexAccountCredential] = field(default_factory=list)
+
     # Pricing (configurable per environment)
     ds_price_cache_hit: float = 0.003625
     ds_price_cache_miss: float = 0.435
@@ -67,6 +89,7 @@ def load_credentials(
     env_file: str | None = None,
     vast_file: str | None = None,
     nous_auth_file: str | None = None,
+    codex_auth_file: str | None = None,
 ) -> Credentials:
     """Load all credentials from files and environment variables.
 
@@ -76,6 +99,7 @@ def load_credentials(
         env_file: Path to .env-style file (default: ~/.hermes/.env)
         vast_file: Path to Vast.ai key file (default: ~/.config/vastai/vast_api_key)
         nous_auth_file: Path to Nous OAuth JSON (default: ~/.hermes/auth.json)
+        codex_auth_file: Path to Hermes auth JSON for Codex pool (default: nous_auth_file)
     """
     if env_file is None:
         env_file = os.path.expanduser("~/.hermes/.env")
@@ -83,6 +107,8 @@ def load_credentials(
         vast_file = os.path.expanduser("~/.config/vastai/vast_api_key")
     if nous_auth_file is None:
         nous_auth_file = os.path.expanduser("~/.hermes/auth.json")
+    if codex_auth_file is None:
+        codex_auth_file = nous_auth_file
 
     hermes_env = _read_env_file(env_file)
 
@@ -108,6 +134,44 @@ def load_credentials(
         except (json.JSONDecodeError, OSError):
             pass
 
+    # Hermes Codex credential pool. Each usable openai-codex entry represents
+    # a distinct ChatGPT/Codex subscription account.
+    codex_accounts: list[CodexAccountCredential] = []
+    if codex_auth_file and os.path.exists(codex_auth_file):
+        try:
+            with open(codex_auth_file) as f:
+                auth = json.load(f)
+            pool = auth.get("credential_pool", {})
+            entries = pool.get("openai-codex", []) if isinstance(pool, dict) else []
+            if isinstance(entries, list):
+                for index, entry in enumerate(entries, start=1):
+                    if not isinstance(entry, dict):
+                        continue
+                    access_token = str(entry.get("access_token", "") or "").strip()
+                    if not access_token:
+                        continue
+                    label = str(entry.get("label", "") or "").strip()
+                    if not label:
+                        label = str(entry.get("source", "") or "").strip()
+                    if not label:
+                        label = f"account-{index}"
+                    codex_accounts.append(CodexAccountCredential(
+                        label=label,
+                        access_token=access_token,
+                        refresh_token=str(entry.get("refresh_token", "") or "").strip(),
+                        base_url=str(
+                            entry.get("base_url", "")
+                            or "https://chatgpt.com/backend-api/codex"
+                        ).strip(),
+                        source=str(entry.get("source", "") or "").strip(),
+                        last_refresh=str(entry.get("last_refresh", "") or "").strip(),
+                        last_status=entry.get("last_status"),
+                        last_error_message=entry.get("last_error_message"),
+                        last_error_reset_at=entry.get("last_error_reset_at"),
+                    ))
+        except (json.JSONDecodeError, OSError):
+            pass
+
     return Credentials(
         deepseek_api_key=_get("DEEPSEEK_API_KEY"),
         deepseek_auth_token=_get("DEEPSEEK_AUTH_TOKEN"),
@@ -122,4 +186,5 @@ def load_credentials(
         x_api_ct0=_get("X_API_CT0"),
         x_api_account_id=_get("X_API_ACCOUNT_ID"),
         nous_access_token=nous_token,
+        codex_accounts=codex_accounts,
     )

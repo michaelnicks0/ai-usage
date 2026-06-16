@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Status | Active |
-| Last updated | 2026-06-15 |
+| Last updated | 2026-06-16 |
 | ADR directory | `docs/architecture/adr/` |
 
 ## Index
@@ -13,6 +13,7 @@
 | ADR | Status | Date | Decision |
 |---|---|---:|---|
 | [ADR-0001](0001-adopt-structurizr-c4-generated-artifacts.md) | accepted | 2026-06-15 | Adopt Structurizr C4 model and generated artifact workflow. |
+| [ADR-0002](0002-use-hermes-codex-credential-pool-for-multi-account-quotas.md) | accepted | 2026-06-16 | Use Hermes Codex credential pool for multi-account quota reporting. |
 
 ## Rules
 

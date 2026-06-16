@@ -43,6 +43,17 @@ class TestSnapshotDB:
         assert rows[0][1] == "xai"
         db.close()
 
+    def test_codex_filter_includes_account_qualified_rows(self, temp_db_path):
+        db = SnapshotDB(temp_db_path)
+        db.save("codex:primary", balance=0, spent=None)
+        db.save("codex:wife-codex-pro", balance=0, spent=None)
+        db.save("deepseek", balance=10, spent=1)
+
+        rows = db.query(provider="codex", limit=5)
+        providers = {r[1] for r in rows}
+        assert providers == {"codex:primary", "codex:wife-codex-pro"}
+        db.close()
+
     def test_limit(self, temp_db_path):
         db = SnapshotDB(temp_db_path)
         for i in range(5):

@@ -176,6 +176,20 @@ def main(argv: list[str] | None = None) -> int:
     for name in providers:
         if name in results:
             d = results[name]
+            if name == "codex" and d.extra and d.extra.get("accounts"):
+                for label, account_data in d.extra["accounts"].items():
+                    credits = account_data.get("credits") or {}
+                    balance = None
+                    if isinstance(credits, dict):
+                        try:
+                            balance = float(credits.get("balance", 0) or 0)
+                        except (TypeError, ValueError):
+                            balance = None
+                    db.save(
+                        f"codex:{label}", balance, None,
+                        d.tokens.input, d.tokens.cached, d.tokens.output,
+                    )
+                continue
             db.save(
                 name, d.balance, d.spent,
                 d.tokens.input, d.tokens.cached, d.tokens.output,

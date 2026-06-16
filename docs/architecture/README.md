@@ -6,7 +6,7 @@
 |---|---|
 | Owner | Mike Nicks |
 | Status | Active |
-| Last updated | 2026-06-15 |
+| Last updated | 2026-06-16 |
 | Canonical C4 source | [`workspace.dsl`](workspace.dsl) |
 | Generated atlas | [`c4-diagrams.md`](c4-diagrams.md) |
 | ADR index | [`adr/README.md`](adr/README.md) |

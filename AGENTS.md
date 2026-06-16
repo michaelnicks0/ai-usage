@@ -72,6 +72,7 @@ src/ai_usage/
 - Most API and browser-session credentials are read from `~/.hermes/.env`.
 - Vast.ai can also read `~/.config/vastai/vast_api_key`.
 - Nous reads Hermes OAuth state from `~/.hermes/auth.json`.
+- Codex prefers Hermes `~/.hermes/auth.json` `credential_pool.openai-codex` entries for multi-account quota display; the Codex CLI app-server path is a fallback when no pool entries exist.
 - Google AI Studio reads `~/.hermes/auth/google_oauth.json` from the configured `google-agy`/Hermes OAuth path; do not add API-key auth without discussion.
 - Exa dashboard/admin calls are skipped unless `EXA_ENABLED=true` is present in the process environment or `~/.hermes/.env`.
 - Browser-session credentials that may expire:
@@ -92,6 +93,6 @@ Tests should mock HTTP responses and local subprocess/file interactions. Do not 
 ## Pitfalls
 
 - `ProviderData.meta` is the expected place for provider-level failures, timeout markers, and partial-fetch context.
-- Codex uses the Codex CLI app-server JSON-RPC path, not a normal REST API.
+- Codex uses Hermes credential-pool accounts plus the Codex usage API for multi-account quotas, with the Codex CLI app-server JSON-RPC path retained as fallback.
 - Claude and Google data depend on local authenticated developer tooling/OAuth state.
 - `docs/architecture/workspace.dsl` is canonical for C4 topology; generated artifacts under `docs/architecture/diagrams/` must be regenerated from it. Source-level Markdown/Mermaid docs remain canonical for their narrative/data scope; HTML files are legacy rendered companions unless explicitly regenerated.

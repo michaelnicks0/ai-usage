@@ -17,9 +17,19 @@ PROVIDER_DISPLAY = {
     "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex",
     "claude": "Claude Code", "nous": "Nous", "google": "Google AI Studio",
 }
-
 TOKEN_PROVIDERS = {"deepseek", "xai"}
 SUBSCRIPTION_PROVIDERS = {"codex", "claude", "google"}
+
+
+def _provider_display(name: str | None) -> str:
+    """Human-readable provider name, including account-qualified Codex rows."""
+    if not name:
+        return ""
+    if name.startswith("codex:"):
+        label = name.split(":", 1)[1]
+        return f"Codex ({label})" if label else "Codex"
+    return PROVIDER_DISPLAY.get(name, name)
+
 
 # ── Formatting helpers ──
 
@@ -116,11 +126,15 @@ def render_json(
         if name == "codex":
             cx = d.extra
             if cx:
-                sub_out["codex"] = {
-                    "plan_type": cx.get("plan_type"),
-                    "session": cx.get("session"),
-                    "weekly": cx.get("weekly"),
-                }
+                entry = OrderedDict()
+                accounts = cx.get("accounts")
+                if accounts:
+                    entry["accounts"] = accounts
+                else:
+                    entry["plan_type"] = cx.get("plan_type")
+                    entry["session"] = cx.get("session")
+                    entry["weekly"] = cx.get("weekly")
+                sub_out["codex"] = entry
             continue
 
         # Token fields only for LLM providers
@@ -260,7 +274,7 @@ def render_table(
             lambda d: fmt_tok(d.tokens.total),
         ]
 
-        display_names = [PROVIDER_DISPLAY[n] for n, _ in ordered]
+        display_names = [_provider_display(n) for n, _ in ordered]
         table_data = [d for _, d in ordered]
 
         name_w = max(max(len(n) for n in display_names), len(provider_col))
@@ -324,36 +338,44 @@ def render_table(
     # 2. Codex
     if "codex" in results and results["codex"].extra:
         cx = results["codex"].extra
-        plan = cx.get("plan_type", "unknown").capitalize()
-        sess = cx.get("session")
-        if sess:
-            sub_rows.append((
-                "Codex",
-                plan,
-                "Session",
-                f"{sess['remaining_pct']}%",
-                fmt_countdown(sess.get("resets_at"))
-            ))
-        weekly = cx.get("weekly")
-        if weekly:
-            sub_rows.append((
-                "Codex",
-                plan,
-                "Weekly",
-                f"{weekly['remaining_pct']}%",
-                fmt_countdown(weekly.get("resets_at"))
-            ))
-        if not sess and not weekly:
-            reset_label = (
-                "auth failed" if results["codex"].meta.get("auth_error") else "unavailable"
-            )
-            sub_rows.append((
-                "Codex",
-                plan,
-                "Rate Limits",
-                "—",
-                reset_label
-            ))
+        accounts = cx.get("accounts")
+        if accounts:
+            iterable = accounts.items()
+        else:
+            iterable = [("", cx)]
+
+        for label, acct in iterable:
+            display = f"Codex ({label})" if label else "Codex"
+            plan = acct.get("plan_type", "unknown").capitalize()
+            sess = acct.get("session")
+            if sess:
+                sub_rows.append((
+                    display,
+                    plan,
+                    "Session",
+                    f"{sess['remaining_pct']}%",
+                    fmt_countdown(sess.get("resets_at"))
+                ))
+            weekly = acct.get("weekly")
+            if weekly:
+                sub_rows.append((
+                    display,
+                    plan,
+                    "Weekly",
+                    f"{weekly['remaining_pct']}%",
+                    fmt_countdown(weekly.get("resets_at"))
+                ))
+            if not sess and not weekly:
+                reset_label = acct.get("error") or (
+                    "auth failed" if results["codex"].meta.get("auth_error") else "unavailable"
+                )
+                sub_rows.append((
+                    display,
+                    plan,
+                    "Rate Limits",
+                    "—",
+                    reset_label
+                ))
             
     # 3. Google AI Studio
     if "google" in results and results["google"].extra:
@@ -443,15 +465,17 @@ def render_history(
     lines: list[str] = []
 
     if not rows:
-        label = f" for {PROVIDER_DISPLAY.get(provider, provider)}" if provider else ""
+        label = f" for {_provider_display(provider)}" if provider else ""
         lines.append(f"No history found{label}. Run ai-usage first to collect snapshots.")
         return "\n".join(lines)
 
     prefix = (
-        f"History — {PROVIDER_DISPLAY.get(provider, provider)}"
+        f"History — {_provider_display(provider)}"
         if provider else "History — all providers"
     )
     lines.append(f"{prefix}  ({len(rows)} rows)\n")
+
+    show_provider = (not provider) or any(r[1] != provider for r in rows)
 
     # Build columns
     cols = []
@@ -459,10 +483,10 @@ def render_history(
         ts, prov, bal, spd, inp, cached, outp = r
         ts_short = ts.replace("T", " ").split("+")[0].split("Z")[0][:16]
         total = (cached or 0) + (inp or 0) + (outp or 0)
-        cols.append((ts_short, prov, bal, spd, cached or 0, inp or 0, outp or 0, total))
+        cols.append((ts_short, _provider_display(prov), bal, spd, cached or 0, inp or 0, outp or 0, total))
 
     headers = ["Timestamp", "Balance", "Spend", "In(Hit)", "In(Miss)", "Out", "Total"]
-    if not provider:
+    if show_provider:
         headers.insert(1, "Provider")
 
     col_w = [len(h) for h in headers]
@@ -470,7 +494,7 @@ def render_history(
         ts_d, prov_n, bal, spd, cached, inp, outp, total = row
         vals = [ts_d, fmt_amt(bal), fmt_amt(spd),
                 fmt_tok(cached), fmt_tok(inp), fmt_tok(outp), fmt_tok(total)]
-        if not provider:
+        if show_provider:
             vals.insert(1, prov_n)
         for i, v in enumerate(vals):
             col_w[i] = max(col_w[i], len(v))
@@ -481,7 +505,7 @@ def render_history(
         ts_d, prov_n, bal, spd, cached, inp, outp, total = row
         vals = [ts_d, fmt_amt(bal), fmt_amt(spd),
                 fmt_tok(cached), fmt_tok(inp), fmt_tok(outp), fmt_tok(total)]
-        if not provider:
+        if show_provider:
             vals.insert(1, prov_n)
         line = "  ".join(v.rjust(col_w[i]) for i, v in enumerate(vals))
         lines.append(line)

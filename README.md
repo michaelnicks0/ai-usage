@@ -43,8 +43,10 @@ Subscription      Tier       Resource                 Remaining  Resets In
 ────────────────  ─────────  ───────────────────────  ─────────  ─────────
 Claude Code       Pro        Session                       100%         5h
 Claude Code       Pro        Weekly                         82%      4d12h
-Codex             Plus       Session                        95%        45m
-Codex             Plus       Weekly                         72%       2d2h
+Codex (primary)   Plus       Session                        95%        45m
+Codex (primary)   Plus       Weekly                         72%       2d2h
+Codex (partner)   Pro        Session                        88%      1h10m
+Codex (partner)   Pro        Weekly                         61%      4d12h
 Google AI Studio  Ultra 20x  Claude Opus 4.6 (Think)       100%      4h59m
 Google AI Studio  Ultra 20x  Gemini 3.1 Pro (High)         100%      4h59m
 Google AI Studio  Ultra 20x  Gemini 3.5 Flash (High)       100%      4h59m
@@ -113,32 +115,43 @@ $ ./ai-usage -j -m -p deepseek
 }
 ```
 
-Codex JSON is under the `subscription` branch and contains just session/weekly quota data when the app-server authenticates:
+Codex JSON is under the `subscription` branch. When Hermes has multiple `openai-codex` credential-pool entries, each account is keyed by its Hermes label:
 
 ```json
 $ ./ai-usage -j -p codex
 {
   "subscription": {
     "codex": {
-      "plan_type": "plus",
-      "session": {
-        "used_pct": 45,
-        "remaining_pct": 55,
-        "duration_mins": 300,
-        "resets_at": 1778467926
-      },
-      "weekly": {
-        "used_pct": 7,
-        "remaining_pct": 93,
-        "duration_mins": 10080,
-        "resets_at": 1779054726
+      "accounts": {
+        "primary": {
+          "label": "primary",
+          "plan_type": "plus",
+          "session": {
+            "used_pct": 45,
+            "remaining_pct": 55,
+            "duration_mins": 300,
+            "resets_at": 1778467926
+          },
+          "weekly": {
+            "used_pct": 7,
+            "remaining_pct": 93,
+            "duration_mins": 10080,
+            "resets_at": 1779054726
+          }
+        },
+        "partner": {
+          "label": "partner",
+          "plan_type": "pro",
+          "session": { "remaining_pct": 88 },
+          "weekly": { "remaining_pct": 61 }
+        }
       }
     }
   }
 }
 ```
 
-If Codex local OAuth is stale, `ai-usage` runs interactive `codex login` once from a TTY, then retries the app-server request. In non-interactive shells, or if login still fails, Codex stays visible in the subscription table as `Rate Limits — auth failed`.
+If no Hermes Codex pool exists, `ai-usage` falls back to the legacy local Codex CLI app-server path. If that local OAuth is stale, it runs interactive `codex login` once from a TTY, then retries the app-server request. In non-interactive shells, or if login still fails, Codex stays visible in the subscription table as `Rate Limits — auth failed`.
 
 Nous uses subscription credits that deplete with usage:
 
@@ -173,7 +186,7 @@ $ ./ai-usage -j -p nous
 | Nous | ✅ OAuth API | ✅ subscription charge | — | — | — | — |
 | Google AI Studio | — | — | — | — | — | — |
 
-Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Queried via the Codex CLI app-server JSON-RPC interface.
+Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Preferred path: query the Codex usage API once per Hermes `credential_pool.openai-codex` account and render each account label separately. Legacy fallback: query the single local Codex CLI app-server account.
 
 OpenRouter reports account credits and all-time usage through `/credits`; `ai-usage` displays remaining credits as `total_credits - total_usage`. Period spend comes from the current API key's `usage_monthly` field from `/key`. No aggregate token data is exposed by those endpoints.
 
@@ -203,7 +216,7 @@ Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) 
 | Exa | Spend | `GET admin-api.exa.ai/team-management/api-keys/{id}/usage` | Service key |
 | X API | Balance | `GET console.x.com/api/accounts/{id}/credits` | Session cookies |
 | X API | Spend | `GET console.x.com/api/accounts/{id}/usage` + pricing | Session cookies |
-| Codex | Session/weekly quota rows | `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (`~/.codex/auth.json`; stale auth triggers one interactive `codex login` retry on TTY) |
+| Codex | Session/weekly quota rows | Preferred: `GET chatgpt.com/backend-api/wham/usage` per Hermes `credential_pool.openai-codex` entry; fallback: `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (`~/.hermes/auth.json`; fallback `~/.codex/auth.json`) |
 | Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (`~/.claude/.credentials.json`, refreshed through Claude Code CLI) |
 | Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json) |
 | Google AI Studio | Model quotas | `POST daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth (~/.hermes/auth/google_oauth.json) |
@@ -227,7 +240,15 @@ X_API_CT0=***                      # from console.x.com Network tab → ct0 cook
 X_API_ACCOUNT_ID=***               # from console.x.com URL /accounts/{id}
 ```
 
-Codex requires the Codex CLI installed and authenticated:
+Codex prefers Hermes-managed credentials. List configured accounts and verify output with:
+
+```bash
+hermes auth list openai-codex
+./ai-usage -p codex
+./ai-usage -j -p codex
+```
+
+If Hermes has no Codex credential pool, the fallback path requires the Codex CLI installed and authenticated:
 
 ```bash
 npm i -g @openai/codex-cli
@@ -242,12 +263,12 @@ Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oaut
 
 ### Credential refresh
 
-Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. Claude Code, Nous, Google, and Codex use OAuth-managed credentials that auto-refresh through their owning tools. OpenRouter and the other plain API-key credentials are long-lived until manually rotated.
+Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. Claude Code, Nous, Google, and Codex use OAuth-managed credentials through their owning tools. Codex multi-account display reads Hermes's `openai-codex` credential pool directly; refresh or add accounts with Hermes auth commands. OpenRouter and the other plain API-key credentials are long-lived until manually rotated.
 
 **DeepSeek:** When token usage shows `—`, refresh:
 1. Open https://platform.deepseek.com/usage in Chrome
 2. Press F12 → Network tab → refresh the page
-3. Find any request to `platform.deepseek.com` → copy the `Authorization: Bearer [REDACTED]` header value
+3. Find any request to `platform.deepseek.com` → copy the `Authorization: Bearer ***` header value
 4. Update `DEEPSEEK_AUTH_TOKEN` in `~/.hermes/.env`
 
 **Exa:** Exa is disabled by default to avoid slow/rate-limited dashboard calls. Set `EXA_ENABLED=true` in `~/.hermes/.env` or the process environment before running `ai-usage`. When balance shows `—` while enabled, refresh:
@@ -263,7 +284,7 @@ Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION
 3. Find any request → Cookies tab → copy `auth_token` and `ct0`
 4. Update `X_API_AUTH_TOKEN` and `X_API_CT0` in `~/.hermes/.env`
 
-**Codex:** OAuth normally refreshes through the Codex CLI app-server. If the app-server returns an auth error such as `token_expired` / `refresh_token_reused`, `ai-usage` runs `codex login` once when attached to an interactive TTY, then retries the quota request. If the shell is non-interactive or login fails, the quota table shows `auth failed` instead of dropping Codex silently.
+**Codex:** Multi-account quota display reads Hermes `openai-codex` credential-pool access tokens. If a pool account is stale, that account renders an `auth failed` or `api error` row while other accounts remain visible; refresh or re-add it through Hermes auth. If no Hermes pool exists, the legacy Codex CLI app-server fallback can still run `codex login` once when attached to an interactive TTY.
 
 **Google AI Studio:** OAuth refresh runs automatically when the cached token is near expiry and retries once after `401`, `403`, or `429` from the Cloud Code quota endpoint. If refresh fails, Google quota rows may be absent and `meta.api_error` records the failure.
 

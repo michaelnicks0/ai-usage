@@ -51,7 +51,7 @@ flowchart LR
 | Vast.ai | Current user credit and charges APIs | `balance`, `spent`; tokens are not applicable |
 | Exa | Dashboard balance and admin usage APIs | `balance`, `spent`; tokens are not applicable; provider fetch is skipped unless `EXA_ENABLED=true` |
 | X API | Console credits and usage APIs | `balance`, calculated `spent`; tokens are not applicable |
-| Codex | Codex app-server rate-limit JSON-RPC | `extra` quota rows; dollar/token fields are not applicable; app-server auth failures run one interactive `codex login` retry on TTY, otherwise set `meta.auth_error` and stay visible as an `auth failed` quota row |
+| Codex | Preferred: Codex usage API per Hermes `credential_pool.openai-codex` entry; fallback: Codex app-server rate-limit JSON-RPC | `extra.accounts` maps Hermes account labels to quota rows; dollar/token fields are not applicable; per-account failures stay visible without hiding other accounts; fallback app-server auth failures run one interactive `codex login` retry on TTY, otherwise set `meta.auth_error` and stay visible as an `auth failed` quota row |
 | Claude Code | OAuth usage endpoint, local usage files, and Claude CLI refresh | `extra` quota rows and provider-specific model details; `meta.token_refreshed`, `meta.oauth_retry_status`, and `meta.refresh_error` describe refresh behavior when needed |
 | Nous | Portal OAuth account/subscription endpoints | `balance`/credits plus subscription `extra` |
 | Google AI Studio | Cloud Code available-models/quota endpoint | `extra` model quota rows; cached token refreshes before expiry and once after auth/rate-limit endpoint failures |
@@ -81,7 +81,7 @@ sequenceDiagram
     participant renderer as Renderer
     participant user as Operator
 
-    cli->>db: save(provider, balance, spent, tokens)
+    cli->>db: save(provider or account-qualified provider, balance, spent, tokens)
     db-->>cli: snapshot stored
     user->>cli: ai-usage --history [--history-provider]
     cli->>db: query(provider, limit)
@@ -89,6 +89,8 @@ sequenceDiagram
     cli->>renderer: render_history or render_history_json
     renderer-->>user: history output
 ```
+
+Codex multi-account live fetches save history rows under provider keys such as `codex:primary` and `codex:partner`; `--history-provider codex` queries both the legacy `codex` key and account-qualified `codex:*` rows.
 
 ## Documentation rules
 

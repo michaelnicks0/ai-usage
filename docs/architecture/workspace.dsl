@@ -5,7 +5,7 @@ workspace "ai-usage" "C4 model for the cross-provider AI usage reporting CLI." {
         aiUsage = softwareSystem "ai-usage" "Python CLI that collects cross-provider balance, spend, quota, and token-usage data, normalizes it, stores snapshots, and renders table or JSON output." {
             cliProcess = container "CLI process" "Argparse-driven command process exposed as ai_usage.cli:main and the ai-usage console script." "Python 3.10+ CLI" {
                 commandRouter = component "Command router" "Parses CLI flags, validates provider selection, chooses live-fetch vs history mode, and coordinates output." "ai_usage.cli"
-                credentialLoader = component "Credential loader" "Loads API keys, browser-session cookies, timeout settings, and OAuth state references from local files and environment variables." "ai_usage.config"
+                credentialLoader = component "Credential loader" "Loads API keys, browser-session cookies, timeout settings, OAuth state references, and Hermes Codex credential-pool accounts from local files and environment variables." "ai_usage.config"
                 providerRegistry = component "Provider registry" "Registers and constructs Provider subclasses for DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X API, Codex, Claude Code, Nous, and Google AI Studio." "ai_usage.providers"
                 fetchOrchestrator = component "Fetch orchestrator" "Runs selected provider fetches sequentially or concurrently with a total timeout and per-provider error isolation." "ai_usage.fetcher"
                 providerAdapters = component "Provider adapters" "Provider-specific modules convert raw HTTP, local CLI, and local file responses into normalized ProviderData." "src/ai_usage/providers"
@@ -18,13 +18,13 @@ workspace "ai-usage" "C4 model for the cross-provider AI usage reporting CLI." {
             historyDb = container "Snapshot history database" "Stores normalized provider snapshots for --history queries; raw provider payloads are not stored." "SQLite WAL file at ~/.hermes/ai-usage.db" "Database"
         }
 
-        localCredentialFiles = softwareSystem "Local credential files" "Credential and OAuth state outside the repo: ~/.hermes/.env, ~/.config/vastai/vast_api_key, ~/.hermes/auth.json, ~/.hermes/auth/google_oauth.json, ~/.claude/.credentials.json, ~/.claude.json, and ~/.claude/stats-cache.json." {
+        localCredentialFiles = softwareSystem "Local credential files" "Credential and OAuth state outside the repo: ~/.hermes/.env, ~/.config/vastai/vast_api_key, ~/.hermes/auth.json including credential_pool.openai-codex, ~/.hermes/auth/google_oauth.json, ~/.claude/.credentials.json, ~/.claude.json, and ~/.claude/stats-cache.json." {
             tags "External", "Data Store"
         }
-        localCliTools = softwareSystem "Local developer CLIs" "Codex CLI app-server/login and Claude Code CLI refresh paths used for subscription quota and OAuth refresh behavior." {
+        localCliTools = softwareSystem "Local developer CLIs" "Codex CLI app-server/login fallback and Claude Code CLI refresh paths used for subscription quota and OAuth refresh behavior." {
             tags "External"
         }
-        providerHttpApis = softwareSystem "Provider HTTP APIs" "External APIs for DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X Console, Anthropic OAuth usage, Nous Portal, Google OAuth, and Google Cloud Code quota data." {
+        providerHttpApis = softwareSystem "Provider HTTP APIs" "External APIs for DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X Console, Codex usage, Anthropic OAuth usage, Nous Portal, Google OAuth, and Google Cloud Code quota data." {
             tags "External"
         }
         terminalOutput = softwareSystem "Terminal / calling process" "Receives stdout table or JSON output from ai-usage." {
@@ -39,7 +39,7 @@ workspace "ai-usage" "C4 model for the cross-provider AI usage reporting CLI." {
         aiUsage -> localCredentialFiles "Reads credentials and OAuth state" "filesystem"
         aiUsage -> localCliTools "Delegates CLI-backed quota/auth flows" "subprocess"
         cliProcess -> localCredentialFiles "Reads credentials and OAuth state" "filesystem"
-        cliProcess -> localCliTools "Starts Codex and Claude helper commands when required" "subprocess"
+        cliProcess -> localCliTools "Starts Codex fallback and Claude helper commands when required" "subprocess"
         cliProcess -> providerHttpApis "Calls provider APIs through adapters" "HTTPS"
         cliProcess -> historyDb "Writes and reads snapshots" "sqlite3"
         cliProcess -> terminalOutput "Prints table or JSON reports" "stdout"
@@ -102,7 +102,7 @@ workspace "ai-usage" "C4 model for the cross-provider AI usage reporting CLI." {
             fetchOrchestrator -> providerAdapters "Call provider.fetch()"
             providerAdapters -> httpClient "Use retrying HTTP client when applicable"
             providerAdapters -> providerHttpApis "Fetch raw balance/spend/quota/token data"
-            providerAdapters -> localCliTools "Use CLI-backed quota/auth flows when applicable"
+            providerAdapters -> localCliTools "Use CLI-backed quota/auth fallback flows when applicable" "subprocess"
             providerAdapters -> normalizedModels "Normalize raw responses"
             commandRouter -> snapshotRepository "Save fetched snapshot rows"
             snapshotRepository -> historyDb "Insert normalized rows"
