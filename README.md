@@ -30,9 +30,10 @@ flowchart TD
 $ ./ai-usage
  Provider       Balance         Spend       Tokens In (Hit)  Tokens In (Miss)  Tokens Out  Tokens Total
 ─────────────────────────────────────────────────────────────────────────────────────────────────────
- DeepSeek         $6.03          $3.97          118,428,800          7,388,843      379,566    126,197,209
-     xAI         $25.00          $0.60              315,968            435,709        2,454        754,131
- Vast.ai          $4.01         $20.99                    —                  —            —              —
+   DeepSeek         $6.03          $3.97          118,428,800          7,388,843      379,566    126,197,209
+        xAI        $25.00          $0.60              315,968            435,709        2,454        754,131
+ OpenRouter        $55.20          $0.72                    —                  —            —              —
+    Vast.ai         $4.01         $20.99                    —                  —            —              —
      Exa             —           $0.12                    —                  —            —              —
     X API          $24.99          $0.04                    —                  —            —              —
     Nous         $21.74         $20.00                    —                  —            —              —
@@ -55,7 +56,7 @@ Google AI Studio  Ultra 20x  Gemini 3.5 Flash (High)       100%      4h59m
 ./ai-usage                          # all providers
 ./ai-usage help                     # same as --help
 ./ai-usage -p xai                   # single provider
-./ai-usage -p deepseek,xai,codex    # multiple providers
+./ai-usage -p deepseek,xai,openrouter,codex  # multiple providers
 ./ai-usage -m                       # per-model token breakdown
 ./ai-usage -m -p deepseek,xai       # per-model, filtered
 ./ai-usage -j                       # JSON output
@@ -163,6 +164,7 @@ $ ./ai-usage -j -p nous
 |----------|---------|-------------|------------|-------------|------------|-----------|
 | DeepSeek | ✅ API | ✅ calc from tokens | ✅ platform API | ✅ platform API | ✅ platform API | ✅ |
 | xAI | ✅ mgmt API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ invoice API | ✅ |
+| OpenRouter | ✅ credits API | ✅ key monthly usage | — | — | — | — |
 | Vast.ai | ✅ API | ✅ charges API | — | — | — | — |
 | Exa | ✅ dashboard session | ✅ admin API | — | — | — | — |
 | X API | ✅ console API | ✅ usage × pricing | — | — | — | — |
@@ -172,6 +174,8 @@ $ ./ai-usage -j -p nous
 | Google AI Studio | — | — | — | — | — | — |
 
 Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Queried via the Codex CLI app-server JSON-RPC interface.
+
+OpenRouter reports account credits and all-time usage through `/credits`; `ai-usage` displays remaining credits as `total_credits - total_usage`. Period spend comes from the current API key's `usage_monthly` field from `/key`. No aggregate token data is exposed by those endpoints.
 
 Exa is skipped unless `EXA_ENABLED=true`; this keeps the default all-provider run from making slow or rate-limited dashboard/admin calls.
 
@@ -191,6 +195,8 @@ Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) 
 | DeepSeek | Token usage | `GET platform.deepseek.com/api/v0/usage/amount` | Platform auth token |
 | xAI | Balance | `GET management-api.x.ai/v1/billing/teams/{id}/prepaid/balance` | Management key |
 | xAI | Token + spend | `GET management-api.x.ai/v1/billing/teams/{id}/postpaid/invoice/preview` | Management key |
+| OpenRouter | Balance | `GET openrouter.ai/api/v1/credits` | API key |
+| OpenRouter | Spend | `GET openrouter.ai/api/v1/key` (`usage_monthly`) | API key |
 | Vast.ai | Balance | `GET console.vast.ai/api/v0/users/current/` | API key |
 | Vast.ai | Spend | `GET cloud.vast.ai/api/v0/charges/` (current month) | API key |
 | Exa | Balance | `GET dashboard.exa.ai/api/get-orb-balance` | Session cookie |
@@ -211,6 +217,7 @@ DEEPSEEK_API_KEY=sk-...            # from platform.deepseek.com/api_keys
 DEEPSEEK_AUTH_TOKEN=...            # from platform.deepseek.com Network tab
 XAI_MANAGEMENT_KEY=xai-token-...   # from console.x.ai/team/default/management-keys
 XAI_TEAM_ID=...                    # UUID from management keys page
+OPENROUTER_API_KEY=sk-or-v1-...    # from openrouter.ai/settings/keys
 VASTAI_API_KEY=***                 # from cloud.vast.ai/manage-keys
 EXA_SERVICE_KEY=***                # from dashboard.exa.ai (service key, not search key)
 EXA_SESSION_TOKEN=***              # from dashboard.exa.ai Network tab (expires, see below)
@@ -235,7 +242,7 @@ Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oaut
 
 ### Credential refresh
 
-Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. Claude Code, Nous, Google, and Codex use OAuth-managed credentials that auto-refresh through their owning tools. All other credentials are long-lived.
+Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION_TOKEN`, and the X API cookies. Claude Code, Nous, Google, and Codex use OAuth-managed credentials that auto-refresh through their owning tools. OpenRouter and the other plain API-key credentials are long-lived until manually rotated.
 
 **DeepSeek:** When token usage shows `—`, refresh:
 1. Open https://platform.deepseek.com/usage in Chrome

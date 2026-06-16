@@ -31,7 +31,7 @@ flowchart TB
     config --> nousAuth[("~/.hermes/auth.json")]:::datastore
     config --> googleAuth[("~/.hermes/auth/google_oauth.json")]:::datastore
 
-    registry --> providers["Provider modules<br/>deepseek, xai, vastai, exa, x, codex, claude, nous, google"]:::process
+    registry --> providers["Provider modules<br/>deepseek, xai, openrouter, vastai, exa, x, codex, claude, nous, google"]:::process
     fetcher --> http["HttpClient<br/>timeout + retry"]:::process
     fetcher --> providers
     providers --> http
@@ -86,6 +86,7 @@ sequenceDiagram
 |---|---|---|---|
 | `deepseek` | DeepSeek | Balance, spend, token usage | DeepSeek API + platform usage API |
 | `xai` | xAI | Balance, spend, token usage | xAI management billing APIs |
+| `openrouter` | OpenRouter | Credit balance and key monthly spend | OpenRouter credits and key APIs |
 | `vastai` | Vast.ai | Balance and spend | Vast.ai user and charges APIs |
 | `exa` | Exa | Balance and spend | Exa dashboard/admin APIs |
 | `x` | X API | Credit balance and spend | X console API |

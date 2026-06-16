@@ -20,6 +20,7 @@ from ai_usage.render import (
 # Import all providers to register them
 import ai_usage.providers.deepseek  # noqa: F401
 import ai_usage.providers.xai      # noqa: F401
+import ai_usage.providers.openrouter  # noqa: F401
 import ai_usage.providers.vastai   # noqa: F401
 import ai_usage.providers.exa      # noqa: F401
 import ai_usage.providers.x        # noqa: F401
@@ -34,8 +35,8 @@ HELP_TEXT = """\
 ai-usage — cross-provider balance, spend, quota, and token usage.
 
 Fetch normalized account balance, period spend, subscription quota,
-and token breakdowns from DeepSeek, xAI, Vast.ai, Exa, X API,
-Codex, Claude Code, Nous, and Google AI Studio.
+and token breakdowns from DeepSeek, xAI, OpenRouter, Vast.ai,
+Exa, X API, Codex, Claude Code, Nous, and Google AI Studio.
 Reads credentials from ~/.hermes/.env and local OAuth files.
 
 Usage:
@@ -74,6 +75,7 @@ Credentials (from ~/.hermes/.env):
   DEEPSEEK_AUTH_TOKEN      platform session token (expires, see README)
   XAI_MANAGEMENT_KEY       xAI management API key
   XAI_TEAM_ID              xAI team UUID
+  OPENROUTER_API_KEY       OpenRouter API key
   VASTAI_API_KEY           Vast.ai API key (or ~/.config/vastai/vast_api_key)
   EXA_SERVICE_KEY          Exa service key (from dashboard.exa.ai)
   EXA_SESSION_TOKEN        Exa dashboard session token (expires, see README)

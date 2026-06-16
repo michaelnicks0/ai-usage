@@ -23,6 +23,7 @@ def credentials() -> Credentials:
         deepseek_auth_token="ds-auth-token-test",
         xai_management_key="xai-mgmt-test",
         xai_team_id="team-123",
+        openrouter_api_key="openrouter-test-key",
         vastai_api_key="vast-test-key",
         exa_service_key="exa-svc-test",
         exa_session_token="exa-session-test",

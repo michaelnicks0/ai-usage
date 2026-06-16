@@ -27,7 +27,7 @@ graph LR
     style 14 fill:#fef3c7,stroke:#d97706,color:#111827
     15["<div style='font-weight: bold'>Local developer CLIs</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Codex CLI app-server/login<br />and Claude Code CLI refresh<br />paths used for subscription<br />quota and OAuth refresh<br />behavior.</div>"]
     style 15 fill:#f3e8ff,stroke:#9333ea,color:#111827
-    16["<div style='font-weight: bold'>Provider HTTP APIs</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>External APIs for DeepSeek,<br />xAI, Vast.ai, Exa, X Console,<br />Anthropic OAuth usage, Nous<br />Portal, Google OAuth, and<br />Google Cloud Code quota data.</div>"]
+    16["<div style='font-weight: bold'>Provider HTTP APIs</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>External APIs for DeepSeek,<br />xAI, OpenRouter, Vast.ai,<br />Exa, X Console, Anthropic<br />OAuth usage, Nous Portal,<br />Google OAuth, and Google<br />Cloud Code quota data.</div>"]
     style 16 fill:#f3e8ff,stroke:#9333ea,color:#111827
     17["<div style='font-weight: bold'>Terminal / calling process</div><div style='font-size: 70%; margin-top: 0px'>[Software System]</div><div style='font-size: 80%; margin-top:10px'>Receives stdout table or JSON<br />output from ai-usage.</div>"]
     style 17 fill:#f3e8ff,stroke:#9333ea,color:#111827
@@ -48,7 +48,7 @@ graph LR
         style 4 fill:#f0fdf4,stroke:#22c55e,color:#111827
         5["<div style='font-weight: bold'>Credential loader</div><div style='font-size: 70%; margin-top: 0px'>[Component: ai_usage.config]</div><div style='font-size: 80%; margin-top:10px'>Loads API keys,<br />browser-session cookies,<br />timeout settings, and OAuth<br />state references from local<br />files and environment<br />variables.</div>"]
         style 5 fill:#f0fdf4,stroke:#22c55e,color:#111827
-        6["<div style='font-weight: bold'>Provider registry</div><div style='font-size: 70%; margin-top: 0px'>[Component: ai_usage.providers]</div><div style='font-size: 80%; margin-top:10px'>Registers and constructs<br />Provider subclasses for<br />DeepSeek, xAI, Vast.ai, Exa,<br />X API, Codex, Claude Code,<br />Nous, and Google AI Studio.</div>"]
+        6["<div style='font-weight: bold'>Provider registry</div><div style='font-size: 70%; margin-top: 0px'>[Component: ai_usage.providers]</div><div style='font-size: 80%; margin-top:10px'>Registers and constructs<br />Provider subclasses for<br />DeepSeek, xAI, OpenRouter,<br />Vast.ai, Exa, X API, Codex,<br />Claude Code, Nous, and Google<br />AI Studio.</div>"]
         style 6 fill:#f0fdf4,stroke:#22c55e,color:#111827
         7["<div style='font-weight: bold'>Fetch orchestrator</div><div style='font-size: 70%; margin-top: 0px'>[Component: ai_usage.fetcher]</div><div style='font-size: 80%; margin-top:10px'>Runs selected provider<br />fetches sequentially or<br />concurrently with a total<br />timeout and per-provider<br />error isolation.</div>"]
         style 7 fill:#f0fdf4,stroke:#22c55e,color:#111827

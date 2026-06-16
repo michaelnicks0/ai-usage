@@ -6,7 +6,7 @@ workspace "ai-usage" "C4 model for the cross-provider AI usage reporting CLI." {
             cliProcess = container "CLI process" "Argparse-driven command process exposed as ai_usage.cli:main and the ai-usage console script." "Python 3.10+ CLI" {
                 commandRouter = component "Command router" "Parses CLI flags, validates provider selection, chooses live-fetch vs history mode, and coordinates output." "ai_usage.cli"
                 credentialLoader = component "Credential loader" "Loads API keys, browser-session cookies, timeout settings, and OAuth state references from local files and environment variables." "ai_usage.config"
-                providerRegistry = component "Provider registry" "Registers and constructs Provider subclasses for DeepSeek, xAI, Vast.ai, Exa, X API, Codex, Claude Code, Nous, and Google AI Studio." "ai_usage.providers"
+                providerRegistry = component "Provider registry" "Registers and constructs Provider subclasses for DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X API, Codex, Claude Code, Nous, and Google AI Studio." "ai_usage.providers"
                 fetchOrchestrator = component "Fetch orchestrator" "Runs selected provider fetches sequentially or concurrently with a total timeout and per-provider error isolation." "ai_usage.fetcher"
                 providerAdapters = component "Provider adapters" "Provider-specific modules convert raw HTTP, local CLI, and local file responses into normalized ProviderData." "src/ai_usage/providers"
                 httpClient = component "HTTP client" "urllib-based JSON client with timeout, retry, and non-retryable status handling." "ai_usage.http.HttpClient"
@@ -24,7 +24,7 @@ workspace "ai-usage" "C4 model for the cross-provider AI usage reporting CLI." {
         localCliTools = softwareSystem "Local developer CLIs" "Codex CLI app-server/login and Claude Code CLI refresh paths used for subscription quota and OAuth refresh behavior." {
             tags "External"
         }
-        providerHttpApis = softwareSystem "Provider HTTP APIs" "External APIs for DeepSeek, xAI, Vast.ai, Exa, X Console, Anthropic OAuth usage, Nous Portal, Google OAuth, and Google Cloud Code quota data." {
+        providerHttpApis = softwareSystem "Provider HTTP APIs" "External APIs for DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X Console, Anthropic OAuth usage, Nous Portal, Google OAuth, and Google Cloud Code quota data." {
             tags "External"
         }
         terminalOutput = softwareSystem "Terminal / calling process" "Receives stdout table or JSON output from ai-usage." {

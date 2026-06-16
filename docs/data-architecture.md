@@ -47,6 +47,7 @@ flowchart LR
 |---|---|---|
 | DeepSeek | `/user/balance`; `/api/v0/usage/amount` | `balance`, calculated `spent`, aggregate/model `TokenData` |
 | xAI | Management billing balance and invoice preview | `balance`, `spent`, aggregate/model `TokenData` |
+| OpenRouter | Credits and current-key APIs | `balance` as remaining credits, `spent` as current key month-to-date usage; tokens are not exposed |
 | Vast.ai | Current user credit and charges APIs | `balance`, `spent`; tokens are not applicable |
 | Exa | Dashboard balance and admin usage APIs | `balance`, `spent`; tokens are not applicable; provider fetch is skipped unless `EXA_ENABLED=true` |
 | X API | Console credits and usage APIs | `balance`, calculated `spent`; tokens are not applicable |

@@ -24,6 +24,7 @@ Current provider modules live in `src/ai_usage/providers/`:
 
 - `deepseek`
 - `xai`
+- `openrouter`
 - `vastai`
 - `exa`
 - `x`

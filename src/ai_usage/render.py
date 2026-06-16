@@ -13,8 +13,8 @@ from ai_usage.providers import registry
 # ── Constants ──
 
 PROVIDER_DISPLAY = {
-    "deepseek": "DeepSeek", "xai": "xAI", "vastai": "Vast.ai",
-    "exa": "Exa", "x": "X API", "codex": "Codex",
+    "deepseek": "DeepSeek", "xai": "xAI", "openrouter": "OpenRouter",
+    "vastai": "Vast.ai", "exa": "Exa", "x": "X API", "codex": "Codex",
     "claude": "Claude Code", "nous": "Nous", "google": "Google AI Studio",
 }
 

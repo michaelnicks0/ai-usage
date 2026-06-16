@@ -12,7 +12,7 @@
 
 | Area | Verified state |
 |---|---|
-| Providers | 9 registered providers: DeepSeek, xAI, Vast.ai, Exa, X API, Codex, Claude Code, Nous, Google AI Studio |
+| Providers | 10 registered providers: DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X API, Codex, Claude Code, Nous, Google AI Studio |
 | CLI entry point | `ai_usage.cli:main`, wrapper script `./ai-usage`, package script `ai-usage` |
 | Default live fetch | `-p` defaults to all registered providers from the registry |
 | History storage | SQLite database at `~/.hermes/ai-usage.db`; `--history-limit` is multiplied by current provider count for all-provider history |
@@ -20,7 +20,7 @@
 | OAuth/local auth files | Codex `~/.codex/auth.json`; Claude `~/.claude/.credentials.json`, `~/.claude.json`, `~/.claude/stats-cache.json`; Nous `~/.hermes/auth.json`; Google `~/.hermes/auth/google_oauth.json` |
 | Exa default | Skipped unless `EXA_ENABLED=true` is loaded from the process environment or `~/.hermes/.env` |
 | Subscription providers | Codex, Claude Code, Google AI Studio render in the `Subscription Quotas` section / JSON `subscription` branch |
-| API-credit providers | DeepSeek, xAI, Vast.ai, Exa, X API, Nous render in the main/API branch |
+| API-credit providers | DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X API, Nous render in the main/API branch |
 
 ### Documentation/code mismatches fixed in this audit
 
@@ -36,8 +36,8 @@
 
 ```text
 .venv/bin/python -m pytest tests/ -v --cov=ai_usage --cov-report=term
-88 passed in 0.65s
-TOTAL 1308 statements, 337 missed, 74% coverage
+92 passed in 0.68s
+TOTAL 1345 statements, 346 missed, 74% coverage
 ```
 
 Coverage by module from the current verified run:
@@ -47,6 +47,7 @@ Coverage by module from the current verified run:
 | `models.py` | 100% |
 | `db.py` | 100% |
 | `providers/deepseek.py` | 100% |
+| `providers/openrouter.py` | 100% |
 | `providers/x.py` | 100% |
 | `providers/xai.py` | 100% |
 | `config.py` | 97% |

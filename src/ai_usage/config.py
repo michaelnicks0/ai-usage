@@ -33,6 +33,9 @@ class Credentials:
     xai_management_key: str = ""
     xai_team_id: str = ""
 
+    # OpenRouter
+    openrouter_api_key: str = ""
+
     # Vast.ai
     vastai_api_key: str = ""
 
@@ -110,6 +113,7 @@ def load_credentials(
         deepseek_auth_token=_get("DEEPSEEK_AUTH_TOKEN"),
         xai_management_key=_get("XAI_MANAGEMENT_KEY"),
         xai_team_id=_get("XAI_TEAM_ID"),
+        openrouter_api_key=_get("OPENROUTER_API_KEY"),
         vastai_api_key=_get("VASTAI_API_KEY", vast_file),
         exa_service_key=_get("EXA_SERVICE_KEY"),
         exa_session_token=_get("EXA_SESSION_TOKEN"),

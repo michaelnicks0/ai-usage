@@ -14,6 +14,7 @@ class TestCLI:
         captured = capsys.readouterr()
         assert "ai-usage" in captured.out
         assert "Google AI Studio" in captured.out
+        assert "OPENROUTER_API_KEY" in captured.out
         assert "EXA_ENABLED" in captured.out
 
     def test_help_subcommand(self, capsys):
@@ -64,7 +65,7 @@ class TestCLI:
         mock_db_instance.query.assert_called_once_with(
             provider=None,
             limit=10,
-            provider_count=9,
+            provider_count=10,
         )
         captured = capsys.readouterr()
         assert "No history found" in captured.out
