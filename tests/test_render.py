@@ -212,6 +212,53 @@ class TestRenderTable:
         assert "auth failed" in result
         assert "403 blocked" not in result
 
+    def test_google_quota_rows_use_entitlement_tier_not_model_heuristic(self):
+        pd = ProviderData(
+            extra={
+                "plan_type": "free",
+                "plan_label": "Antigravity Starter Quota",
+                "plan_source": "loadCodeAssist.paidTier",
+                "subscription_status": "free",
+                "raw_tier_id": "free-tier",
+                "quota_source": "fetchAvailableModels",
+                "models": OrderedDict([
+                    ("gemini-3.1-pro-high", {
+                        "display_name": "Gemini 3.1 Pro (High)",
+                        "remaining_pct": 100,
+                        "resets_at": None,
+                    }),
+                ]),
+            },
+        )
+
+        result = render_table({"google": pd})
+
+        assert "Google AI Studio" in result
+        assert "Free" in result
+        assert "Gemini 3.1 Pro (High)" in result
+        assert "Ultra 20x" not in result
+
+    def test_google_json_includes_plan_source_and_quota_source(self):
+        pd = ProviderData(
+            extra={
+                "plan_type": "pro",
+                "plan_label": "Google AI Pro",
+                "plan_source": "loadCodeAssist.paidTier",
+                "subscription_status": "active",
+                "raw_tier_id": "g1-pro-tier",
+                "quota_source": "fetchAvailableModels",
+                "models": {},
+            },
+        )
+
+        parsed = json.loads(render_json({"google": pd}))
+        google = parsed["subscription"]["google ai studio"]
+
+        assert google["plan_type"] == "pro"
+        assert google["plan_label"] == "Google AI Pro"
+        assert google["plan_source"] == "loadCodeAssist.paidTier"
+        assert google["quota_source"] == "fetchAvailableModels"
+
     def test_models_section(self):
         td = TokenData(input=500, cached=300, output=100)
         pd = ProviderData(

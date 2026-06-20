@@ -42,7 +42,15 @@ class TestGoogleProvider:
             "expires_in": 3600
         }).encode()
         
-        # 2. Response for fetchAvailableModels
+        # 2. Response for loadCodeAssist entitlement
+        mock_entitlement_resp = MagicMock()
+        mock_entitlement_resp.read.return_value = json.dumps({
+            "currentTier": {"id": "free-tier", "name": "Antigravity"},
+            "paidTier": {"id": "g1-ultra-tier", "name": "Google AI Ultra"},
+            "cloudaicompanionProject": "project_id",
+        }).encode()
+
+        # 3. Response for fetchAvailableModels
         mock_models_resp = MagicMock()
         mock_models_resp.read.return_value = json.dumps({
             "models": {
@@ -59,20 +67,27 @@ class TestGoogleProvider:
         # Configure context managers for urlopen
         mock_token_cm = MagicMock()
         mock_token_cm.__enter__.return_value = mock_token_resp
-        
+
+        mock_entitlement_cm = MagicMock()
+        mock_entitlement_cm.__enter__.return_value = mock_entitlement_resp
+
         mock_models_cm = MagicMock()
         mock_models_cm.__enter__.return_value = mock_models_resp
-        
-        mock_urlopen.side_effect = [mock_token_cm, mock_models_cm]
-        
+
+        mock_urlopen.side_effect = [mock_token_cm, mock_entitlement_cm, mock_models_cm]
+
         provider = GoogleProvider(credentials, mock_http)
         data = provider.fetch()
-        
+
         # Assertions
         assert data.extra is not None
-        assert data.extra["plan_type"] == "Ultra 20x"
+        assert data.extra["plan_type"] == "ultra"
+        assert data.extra["plan_label"] == "Google AI Ultra"
+        assert data.extra["plan_source"] == "loadCodeAssist.paidTier"
+        assert data.extra["subscription_status"] == "active"
+        assert data.extra["raw_tier_id"] == "g1-ultra-tier"
         assert "gemini-3.1-pro-high" in data.extra["models"]
-        
+
         model_info = data.extra["models"]["gemini-3.1-pro-high"]
         assert model_info["display_name"] == "Gemini 3.1 Pro (High)"
         assert model_info["remaining_pct"] == 85
@@ -90,6 +105,15 @@ class TestGoogleProvider:
         }
         mock_file_open.return_value.read.return_value = json.dumps(auth_data)
 
+        mock_entitlement_resp = MagicMock()
+        mock_entitlement_resp.read.return_value = json.dumps({
+            "currentTier": {"id": "free-tier", "name": "Antigravity"},
+            "paidTier": {"id": "free-tier", "name": "Antigravity Starter Quota"},
+            "cloudaicompanionProject": "project_id",
+        }).encode()
+        mock_entitlement_cm = MagicMock()
+        mock_entitlement_cm.__enter__.return_value = mock_entitlement_resp
+
         mock_models_resp = MagicMock()
         mock_models_resp.read.return_value = json.dumps({
             "models": {
@@ -102,7 +126,8 @@ class TestGoogleProvider:
         mock_models_cm = MagicMock()
         mock_models_cm.__enter__.return_value = mock_models_resp
         mock_urlopen.side_effect = [
-            HTTPError("https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels", 401, "Unauthorized", Message(), None),
+            HTTPError("https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist", 401, "Unauthorized", Message(), None),
+            mock_entitlement_cm,
             mock_models_cm,
         ]
 
@@ -118,7 +143,9 @@ class TestGoogleProvider:
 
         assert refresh_calls
         assert data.extra is not None
-        assert data.extra["plan_type"] == "Ultra 20x"
+        assert data.extra["plan_type"] == "free"
+        assert data.extra["plan_label"] == "Antigravity Starter Quota"
+        assert data.extra["plan_source"] == "loadCodeAssist.paidTier"
         assert data.extra["models"]["gemini-3.1-pro-high"]["remaining_pct"] == 50
         assert data.meta["token_refreshed"] is True
         assert data.meta["oauth_retry_status"] == 401
@@ -137,7 +164,15 @@ class TestGoogleProvider:
             "refresh": "raw_refresh|project_id"
         }
         mock_file_open.return_value.read.return_value = json.dumps(auth_data)
-        
+
+        mock_entitlement_resp = MagicMock()
+        mock_entitlement_resp.read.return_value = json.dumps({
+            "currentTier": {"id": "free-tier", "name": "Antigravity"},
+            "paidTier": {"id": "free-tier", "name": "Antigravity Starter Quota"},
+        }).encode()
+        mock_entitlement_cm = MagicMock()
+        mock_entitlement_cm.__enter__.return_value = mock_entitlement_resp
+
         # API response with NO remainingFraction — only resetTime
         mock_models_resp = MagicMock()
         mock_models_resp.read.return_value = json.dumps({
@@ -153,8 +188,8 @@ class TestGoogleProvider:
         
         mock_models_cm = MagicMock()
         mock_models_cm.__enter__.return_value = mock_models_resp
-        mock_urlopen.return_value = mock_models_cm
-        
+        mock_urlopen.side_effect = [mock_entitlement_cm, mock_models_cm]
+
         provider = GoogleProvider(credentials, mock_http)
         data = provider.fetch()
         

@@ -104,6 +104,19 @@ def _skip_reason(d: ProviderData) -> str:
     return str(reason) if reason else ""
 
 
+def _google_plan_display(extra: dict[str, Any]) -> str:
+    """Return a short Google entitlement label for table output."""
+    plan_type = str(extra.get("plan_type") or "unknown").lower()
+    labels = {
+        "ultra": "Ultra",
+        "pro": "Pro",
+        "standard": "Standard",
+        "free": "Free",
+        "unknown": "Unknown",
+    }
+    return labels.get(plan_type, str(extra.get("plan_label") or plan_type).capitalize())
+
+
 def _has_reportable_values(d: ProviderData) -> bool:
     """Return True when a row has real account data, not just metadata."""
     return bool(
@@ -180,6 +193,11 @@ def render_json(
             go = d.extra
             if go:
                 entry["plan_type"] = go.get("plan_type")
+                entry["plan_label"] = go.get("plan_label")
+                entry["plan_source"] = go.get("plan_source")
+                entry["subscription_status"] = go.get("subscription_status")
+                entry["raw_tier_id"] = go.get("raw_tier_id")
+                entry["quota_source"] = go.get("quota_source")
                 entry["models"] = go.get("models")
             entry.pop("balance", None)
             entry.pop("period_spend", None)
@@ -408,15 +426,8 @@ def render_table(
     # 3. Google AI Studio
     if "google" in results and results["google"].extra:
         go = results["google"].extra
-        plan = go.get("plan_type", "unknown")
-        # Plan formatting
-        if plan == "Ultra 20x":
-            plan_str = "Ultra 20x"
-        elif plan == "unknown":
-            plan_str = "Unknown"
-        else:
-            plan_str = plan.capitalize()
-            
+        plan_str = _google_plan_display(go)
+
         models_data = go.get("models", {})
         for mkey, mval in models_data.items():
             sub_rows.append((

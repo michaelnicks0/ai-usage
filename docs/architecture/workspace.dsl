@@ -24,7 +24,7 @@ workspace "ai-usage" "C4 model for the cross-provider AI usage reporting CLI." {
         localCliTools = softwareSystem "Local developer CLIs" "Codex CLI app-server/login fallback and Claude Code CLI refresh paths used for subscription quota and OAuth refresh behavior." {
             tags "External"
         }
-        providerHttpApis = softwareSystem "Provider HTTP APIs" "External APIs for DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X Console, Codex usage, Anthropic OAuth usage, Nous Portal, Google OAuth, and Google Cloud Code quota data." {
+        providerHttpApis = softwareSystem "Provider HTTP APIs" "External APIs for DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X Console, Codex usage, Anthropic OAuth usage, Nous Portal, Google OAuth, and Google Cloud Code entitlement/quota data." {
             tags "External"
         }
         terminalOutput = softwareSystem "Terminal / calling process" "Receives stdout table or JSON output from ai-usage." {

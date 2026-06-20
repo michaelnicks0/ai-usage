@@ -93,7 +93,7 @@ sequenceDiagram
 | `codex` | Codex | Subscription/session quota per Hermes credential-pool account with interactive CLI fallback | Hermes `credential_pool.openai-codex` + Codex usage API; fallback `codex app-server` JSON-RPC |
 | `claude` | Claude Code | Subscription/session quota and local usage | Anthropic OAuth usage API + Claude local files + Claude CLI refresh |
 | `nous` | Nous | Subscription credits with OAuth refresh retry | Nous Portal OAuth account and token APIs |
-| `google` | Google AI Studio | Model quota rows with OAuth refresh retry | Cloud Code internal model/quota endpoint |
+| `google` | Google AI Studio | Entitlement tier plus model quota rows with OAuth refresh retry | Cloud Code internal entitlement and model/quota endpoints |
 
 ## Data boundaries
 
@@ -104,7 +104,7 @@ sequenceDiagram
 - Exa dashboard/admin calls are intentionally disabled unless `EXA_ENABLED=true` is loaded from the environment or `~/.hermes/.env`.
 - Claude OAuth refresh is delegated to the Claude Code CLI with a minimal prompt when the cached access token is near expiry or the usage endpoint rejects it with an auth/rate-limit status.
 - Nous OAuth refresh runs before expiry, retries once after `401`/`403` account API responses, and can be forced with `ai-usage --refresh-auth nous` when `~/.hermes/auth.json` includes a Nous refresh token.
-- Google OAuth refresh runs before expiry and retries once after auth/rate-limit statuses from the Cloud Code quota endpoint.
+- Google OAuth refresh runs before expiry and retries once after auth/rate-limit statuses from the Cloud Code entitlement or quota endpoints. Google tier display is based on `loadCodeAssist` tier fields, while quota rows remain based on model availability from `fetchAvailableModels`.
 
 ## Maintenance notes
 

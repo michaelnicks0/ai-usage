@@ -47,9 +47,9 @@ Codex (primary)   Plus       Session                        95%        45m
 Codex (primary)   Plus       Weekly                         72%       2d2h
 Codex (partner)   Pro        Session                        88%      1h10m
 Codex (partner)   Pro        Weekly                         61%      4d12h
-Google AI Studio  Ultra 20x  Claude Opus 4.6 (Think)       100%      4h59m
-Google AI Studio  Ultra 20x  Gemini 3.1 Pro (High)         100%      4h59m
-Google AI Studio  Ultra 20x  Gemini 3.5 Flash (High)       100%      4h59m
+Google AI Studio  Free       Claude Opus 4.6 (Think)       100%      4h59m
+Google AI Studio  Free       Gemini 3.1 Pro (High)         100%      4h59m
+Google AI Studio  Free       Gemini 3.5 Flash (High)       100%      4h59m
 ```
 
 ## Usage
@@ -172,6 +172,31 @@ $ ./ai-usage -j -p nous
 }
 ```
 
+Google AI Studio / Antigravity JSON keeps entitlement and quota sources separate:
+
+```json
+$ ./ai-usage -j -p google
+{
+  "subscription": {
+    "google ai studio": {
+      "plan_type": "free",
+      "plan_label": "Antigravity Starter Quota",
+      "plan_source": "loadCodeAssist.paidTier",
+      "subscription_status": "free",
+      "raw_tier_id": "free-tier",
+      "quota_source": "fetchAvailableModels",
+      "models": {
+        "gemini-3.1-pro-high": {
+          "display_name": "Gemini 3.1 Pro (High)",
+          "remaining_pct": 100,
+          "resets_at": 1782592247
+        }
+      }
+    }
+  }
+}
+```
+
 ## Providers
 
 | Provider | Balance | Period Spend | Tokens Hit | Tokens Miss | Tokens Out | Per-model |
@@ -197,7 +222,7 @@ Claude Code uses subscription/rate-limit windows and local/OAuth usage state. It
 
 Nous Research uses subscription credits ($20+/mo) that deplete as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API with automatic refresh-token retry when Hermes auth state includes a Nous `refresh_token`. Stored in the `api` JSON branch (not `subscription`) since its credit model behaves like API credits.
 
-Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) that tracks remaining fractions per-model group. No token tracking or dollar balance. Queried via the Cloud Code fetchAvailableModels internal endpoint, using locally configured Google developer credentials.
+Google AI Studio / Antigravity separates entitlement from quota availability. The displayed tier comes from Cloud Code `loadCodeAssist` (`paidTier.id`: `g1-ultra-tier`, `g1-pro-tier`, `free-tier`, etc.). Per-model quota rows come from `fetchAvailableModels`. Model availability alone is not treated as proof of an active Google One / Google AI subscription, because quota/model responses can persist after plan changes.
 
 [C4 architecture](docs/architecture/README.md) · [Generated diagrams](docs/architecture/c4-diagrams.md) · [Source architecture](docs/architecture.md) · [Data architecture](docs/data-architecture.md) · [ADRs](docs/architecture/adr/README.md) · [Audit report](AUDIT.md) · Legacy renders: [architecture.html](architecture.html), [data-architecture.html](data-architecture.html)
 
@@ -220,6 +245,7 @@ Google AI Studio uses a compute-based subscription quota model (Ultra 20x plan) 
 | Codex | Session/weekly quota rows | Preferred: `GET chatgpt.com/backend-api/wham/usage` per Hermes `credential_pool.openai-codex` entry; fallback: `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (`~/.hermes/auth.json`; fallback `~/.codex/auth.json`) |
 | Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (`~/.claude/.credentials.json`, refreshed through Claude Code CLI) |
 | Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json) |
+| Google AI Studio | Entitlement tier | `POST daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | OAuth (~/.hermes/auth/google_oauth.json) |
 | Google AI Studio | Model quotas | `POST daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth (~/.hermes/auth/google_oauth.json) |
 
 ## Setup
@@ -264,7 +290,7 @@ Nous reads the OAuth token from `~/.hermes/auth.json` (set up by `hermes model` 
 ai-usage --refresh-auth nous
 ```
 
-Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oauth.json` (written by the Hermes CLI when authenticating the `google-agy` provider). It handles refresh-token rotation, retries once after auth/rate-limit failures from the Cloud Code quota endpoint, and resolves the GCP project ID dynamically.
+Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oauth.json` (written by the Hermes CLI when authenticating the `google-agy` provider). It handles refresh-token rotation, checks `loadCodeAssist` for the current paid/free entitlement, retries once after auth/rate-limit failures from Cloud Code, and resolves the GCP project ID dynamically.
 
 ### Credential refresh
 
@@ -293,6 +319,6 @@ Three browser-session credentials expire — `DEEPSEEK_AUTH_TOKEN`, `EXA_SESSION
 
 **Codex:** Multi-account quota display reads Hermes `openai-codex` credential-pool access tokens. If a pool account is stale, that account renders an `auth failed` or `api error` row while other accounts remain visible; refresh or re-add it through Hermes auth. If no Hermes pool exists, the legacy Codex CLI app-server fallback can still run `codex login` once when attached to an interactive TTY.
 
-**Google AI Studio:** OAuth refresh runs automatically when the cached token is near expiry and retries once after `401`, `403`, or `429` from the Cloud Code quota endpoint. If refresh fails, Google quota rows may be absent and `meta.api_error` records the failure.
+**Google AI Studio:** OAuth refresh runs automatically when the cached token is near expiry and retries once after `401`, `403`, or `429` from Cloud Code entitlement/quota endpoints. If `loadCodeAssist` fails, `meta.plan_error` records the tier-detection failure and the table falls back to an unknown entitlement. If quota fetch fails, Google quota rows may be absent and `meta.api_error` records the failure.
 
 **Claude Code:** OAuth token auto-refreshes through the Claude Code CLI. `ai-usage` refreshes proactively when the cached token expires within two hours and retries once after `401`, `403`, or `429` from the OAuth usage endpoint. The refresh command is intentionally tiny (`claude -p ping --effort low --max-turns 1 --output-format json --no-session-persistence`) but can still consume a small amount of Claude Code rate-limit quota. If refresh fails, the quota table shows `auth failed` instead of the older misleading `403 blocked` label.
