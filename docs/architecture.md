@@ -102,7 +102,7 @@ sequenceDiagram
 - `SnapshotDB` stores normalized numeric output for history; raw provider payloads are not the documentation source. Multi-account Codex snapshots are stored under account-qualified provider keys such as `codex:primary` so history does not collapse separate subscriptions.
 - Codex, Claude, Google, and Nous have quota/subscription semantics that do not map cleanly to a simple dollar balance row.
 - Exa dashboard/admin calls are intentionally disabled unless `EXA_ENABLED=true` is loaded from the environment or `~/.hermes/.env`.
-- Claude OAuth refresh is delegated to the Claude Code CLI with a minimal prompt when the cached access token is near expiry or the usage endpoint rejects it with an auth/rate-limit status.
+- Claude OAuth refresh is delegated to the Claude Code CLI with a minimal prompt when the cached access token is near expiry or the usage endpoint rejects it with an auth/rate-limit status. Claude tier display prefers OAuth `subscriptionType` and falls back to local `oauthAccount.organizationType`; billing transport labels are not displayed as tiers.
 - Nous OAuth refresh runs before expiry, retries once after `401`/`403` account API responses, and can be forced with `ai-usage --refresh-auth nous` when `~/.hermes/auth.json` includes a Nous refresh token.
 - Google OAuth refresh runs before expiry and retries once after auth/rate-limit statuses from the Cloud Code entitlement or quota endpoints. Google tier display is based on `loadCodeAssist` tier fields, while quota rows remain based on model availability from `fetchAvailableModels`.
 

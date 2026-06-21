@@ -20,6 +20,51 @@ CLAUDE_REFRESH_TIMEOUT_SECONDS = 90
 CLAUDE_REFRESH_AUTH_STATUSES = {401, 403, 429}
 
 
+def _normalize_plan_type(value: object) -> str | None:
+    """Normalize Claude local-account tier fields to stable display values."""
+    if value is None:
+        return None
+    raw = str(value).strip().lower().replace("-", "_")
+    if not raw or raw in {"none", "null", "unknown"}:
+        return None
+
+    # Account metadata also contains billing/rate-limit implementation details
+    # that are not user-facing subscription tiers.
+    if raw in {"stripe_subscription", "default_claude_ai"}:
+        return None
+
+    for prefix in ("claude_", "anthropic_"):
+        if raw.startswith(prefix):
+            raw = raw[len(prefix):]
+    for suffix in ("_tier", "_subscription"):
+        if raw.endswith(suffix):
+            raw = raw[: -len(suffix)]
+
+    aliases = {
+        "professional": "pro",
+        "team_plan": "team",
+        "enterprise_plan": "enterprise",
+    }
+    return aliases.get(raw, raw) or None
+
+
+def _plan_type_from_sources(creds: dict, oauth_account: dict | None = None) -> str:
+    """Return the best Claude plan type from current credential/local schemas."""
+    oauth_account = oauth_account or {}
+    for source in (
+        creds.get("subscriptionType"),
+        creds.get("planType"),
+        oauth_account.get("seatTier"),
+        oauth_account.get("organizationType"),
+        oauth_account.get("userRateLimitTier"),
+        oauth_account.get("billingType"),
+    ):
+        normalized = _normalize_plan_type(source)
+        if normalized:
+            return normalized
+    return "unknown"
+
+
 @registry.register
 class ClaudeProvider(Provider):
     name = "claude"
@@ -91,8 +136,8 @@ class ClaudeProvider(Provider):
         )
         return usage if isinstance(usage, dict) else {}
 
-    def _usage_extra(self, creds: dict, usage: dict) -> dict:
-        extra = {"plan_type": creds.get("subscriptionType", "unknown")}
+    def _usage_extra(self, creds: dict, usage: dict, oauth_account: dict | None = None) -> dict:
+        extra: dict[str, object] = {"plan_type": _plan_type_from_sources(creds, oauth_account)}
         fh = usage.get("five_hour", {})
         sd = usage.get("seven_day", {})
         if fh:
@@ -124,6 +169,22 @@ class ClaudeProvider(Provider):
     def fetch(self) -> ProviderData:
         data = ProviderData(models=OrderedDict())
 
+        claude_json = os.path.expanduser("~/.claude.json")
+        local_config: dict = {}
+        local_oauth: dict = {}
+        if os.path.exists(claude_json):
+            try:
+                with open(claude_json) as f:
+                    parsed = json.load(f)
+                if isinstance(parsed, dict):
+                    local_config = parsed
+                    oauth = parsed.get("oauthAccount", {})
+                    if isinstance(oauth, dict):
+                        local_oauth = oauth
+            except Exception:
+                data.meta["local_config_error"] = True
+
+        creds: dict = {}
         creds_path = os.path.expanduser("~/.claude/.credentials.json")
 
         # OAuth rate limit API
@@ -145,18 +206,15 @@ class ClaudeProvider(Provider):
                     usage = self._fetch_usage(creds)
 
                 if usage:
-                    data.extra = self._usage_extra(creds, usage)
+                    data.extra = self._usage_extra(creds, usage, local_oauth)
             except Exception:
                 data.meta["oauth_error"] = True
 
         # Local file fallback: ~/.claude.json
-        claude_json = os.path.expanduser("~/.claude.json")
-        if os.path.exists(claude_json):
+        if local_config:
             try:
-                with open(claude_json) as f:
-                    config = json.load(f)
                 total_cost = 0.0
-                for _proj_path, proj in config.get("projects", {}).items():
+                for _proj_path, proj in local_config.get("projects", {}).items():
                     total_cost += proj.get("lastCost", 0)
                     lmu = proj.get("lastModelUsage", {})
                     for model_name, mu in lmu.items():
@@ -170,8 +228,7 @@ class ClaudeProvider(Provider):
                 if total_cost > 0:
                     data.spent = round(total_cost, 4)
                 if not data.extra:
-                    oauth = config.get("oauthAccount", {})
-                    data.extra = {"plan_type": oauth.get("billingType", "unknown")}
+                    data.extra = {"plan_type": _plan_type_from_sources(creds, local_oauth)}
             except Exception:
                 data.meta["local_config_error"] = True
 

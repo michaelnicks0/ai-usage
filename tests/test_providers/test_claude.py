@@ -14,15 +14,29 @@ from ai_usage.providers.claude import ClaudeProvider
 FUTURE_MS = 9_999_999_999_999
 
 
-def _write_credentials(home, token: str, expires_at: int = FUTURE_MS) -> None:
+def _write_credentials(
+    home,
+    token: str,
+    expires_at: int = FUTURE_MS,
+    subscription_type: str | None = "pro",
+) -> None:
     claude_dir = home / ".claude"
     claude_dir.mkdir(parents=True, exist_ok=True)
+    oauth = {
+        "accessToken": token,
+        "expiresAt": expires_at,
+    }
+    if subscription_type is not None:
+        oauth["subscriptionType"] = subscription_type
     (claude_dir / ".credentials.json").write_text(json.dumps({
-        "claudeAiOauth": {
-            "accessToken": token,
-            "expiresAt": expires_at,
-            "subscriptionType": "pro",
-        }
+        "claudeAiOauth": oauth,
+    }))
+
+
+def _write_claude_json(home, oauth_account: dict) -> None:
+    (home / ".claude.json").write_text(json.dumps({
+        "oauthAccount": oauth_account,
+        "projects": {},
     }))
 
 
@@ -111,6 +125,45 @@ def test_auth_failure_refreshes_token_and_retries(tmp_path, monkeypatch, mock_ht
     assert data.extra is not None
     assert data.extra["weekly"]["remaining_pct"] == 100
     assert data.meta["token_refreshed"] is True
+
+
+def test_plan_type_falls_back_to_local_organization_type(
+    tmp_path,
+    monkeypatch,
+    mock_http,
+    credentials,
+):
+    _write_credentials(tmp_path, "token", subscription_type=None)
+    _write_claude_json(tmp_path, {
+        "billingType": "stripe_subscription",
+        "organizationType": "claude_pro",
+    })
+    monkeypatch.setenv("HOME", str(tmp_path))
+    mock_http.get_json.return_value = _usage_payload()
+
+    data = ClaudeProvider(credentials, mock_http).fetch()
+
+    assert data.extra is not None
+    assert data.extra["plan_type"] == "pro"
+
+
+def test_local_plan_type_ignores_billing_transport_label(
+    tmp_path,
+    monkeypatch,
+    mock_http,
+    credentials,
+):
+    _write_claude_json(tmp_path, {
+        "billingType": "stripe_subscription",
+        "organizationType": "claude_max",
+    })
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    data = ClaudeProvider(credentials, mock_http).fetch()
+
+    assert data.extra is not None
+    assert data.extra["plan_type"] == "max"
+    mock_http.get_json.assert_not_called()
 
 
 def test_refresh_failure_is_reported_without_raising(tmp_path, monkeypatch, mock_http, credentials):
