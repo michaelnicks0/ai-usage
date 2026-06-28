@@ -36,7 +36,7 @@ $ ./ai-usage
     Vast.ai         $4.01         $20.99                    —                  —            —              —
      Exa             —           $0.12                    —                  —            —              —
     X API          $24.99          $0.04                    —                  —            —              —
-    Nous         $21.74         $20.00                    —                  —            —              —
+    Nous         $39.84         $25.66                    —                  —            —              —
 
 Subscription Quotas
 Subscription      Tier       Resource                 Remaining  Resets In
@@ -154,19 +154,25 @@ $ ./ai-usage -j -p codex
 
 If no Hermes Codex pool exists, `ai-usage` falls back to the legacy local Codex CLI app-server path. If that local OAuth is stale, it runs interactive `codex login` once from a TTY, then retries the app-server request. In non-interactive shells, or if login still fails, Codex stays visible in the subscription table as `Rate Limits — auth failed`.
 
-Nous uses subscription credits that deplete with usage:
+Nous uses subscription credits first, then non-expiring top-up credits. The main `balance` is total usable credits; JSON keeps the buckets explicit:
 
 ```json
 $ ./ai-usage -j -p nous
 {
   "api": {
     "nous": {
-      "balance": 21.74,
-      "period_spend": 20.00,
+      "balance": 39.84,
+      "period_spend": 25.66,
       "plan_type": "Plus",
       "monthly_charge": 20.00,
-      "credits_remaining": 21.74,
-      "current_period_end": "2026-06-11T15:17:45.000Z"
+      "monthly_credits": 22.00,
+      "credits_remaining": 39.84,
+      "total_usable_credits": 39.84,
+      "subscription_credits_remaining": 0.00,
+      "top_up_credits_remaining": 39.84,
+      "purchased_credits_remaining": 39.84,
+      "rollover_credits": 3.66,
+      "current_period_end": "2026-07-11T15:17:45.000Z"
     }
   }
 }
@@ -209,7 +215,7 @@ $ ./ai-usage -j -p google
 | X API | ✅ console API | ✅ usage × pricing | — | — | — | — |
 | Codex | — | — | — | — | — | — |
 | Claude Code | — | — | Local/OAuth usage | Local/OAuth usage | Local/OAuth usage | Provider-specific |
-| Nous | ✅ OAuth API | ✅ subscription charge | — | — | — | — |
+| Nous | ✅ OAuth API total usable credits | ✅ usage credit drawdown | — | — | — | — |
 | Google AI Studio | — | — | — | — | — | — |
 
 Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Preferred path: query the Codex usage API once per Hermes `credential_pool.openai-codex` account and render each account label separately. Legacy fallback: query the single local Codex CLI app-server account.
@@ -220,7 +226,7 @@ Exa is skipped unless `EXA_ENABLED=true`; this keeps the default all-provider ru
 
 Claude Code uses subscription/rate-limit windows and local/OAuth usage state. Its model details do not map cleanly to the generic dollar-balance rows.
 
-Nous Research uses subscription credits ($20+/mo) that deplete as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API with automatic refresh-token retry when Hermes auth state includes a Nous `refresh_token`. Stored in the `api` JSON branch (not `subscription`) since its credit model behaves like API credits.
+Nous Research uses subscription credits ($20+/mo) that deplete before separately purchased/top-up credits as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API with automatic refresh-token retry when Hermes auth state includes a Nous `refresh_token`. `balance` is total usable credits; JSON also exposes subscription, top-up/purchased, monthly, and rollover credit buckets. Stored in the `api` JSON branch (not `subscription`) since its credit model behaves like API credits.
 
 Google AI Studio / Antigravity separates entitlement from quota availability. The displayed tier comes from Cloud Code `loadCodeAssist` (`paidTier.id`: `g1-ultra-tier`, `g1-pro-tier`, `free-tier`, etc.). Per-model quota rows come from `fetchAvailableModels`. Model availability alone is not treated as proof of an active Google One / Google AI subscription, because quota/model responses can persist after plan changes.
 
@@ -244,7 +250,7 @@ Google AI Studio / Antigravity separates entitlement from quota availability. Th
 | X API | Spend | `GET console.x.com/api/accounts/{id}/usage` + pricing | Session cookies |
 | Codex | Session/weekly quota rows | Preferred: `GET chatgpt.com/backend-api/wham/usage` per Hermes `credential_pool.openai-codex` entry; fallback: `codex app-server` JSON-RPC `account/rateLimits/read` | OAuth (`~/.hermes/auth.json`; fallback `~/.codex/auth.json`) |
 | Claude | Session/weekly + tokens | `GET api.anthropic.com/api/oauth/usage` + local files | OAuth (`~/.claude/.credentials.json`, refreshed through Claude Code CLI) |
-| Nous | Subscription credits | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json) |
+| Nous | Total usable credits, credit buckets, period spend | `GET portal.nousresearch.com/api/oauth/account` | OAuth (~/.hermes/auth.json) |
 | Google AI Studio | Entitlement tier | `POST daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | OAuth (~/.hermes/auth/google_oauth.json) |
 | Google AI Studio | Model quotas | `POST daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | OAuth (~/.hermes/auth/google_oauth.json) |
 

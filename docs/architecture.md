@@ -92,7 +92,7 @@ sequenceDiagram
 | `x` | X API | Credit balance and spend | X console API |
 | `codex` | Codex | Subscription/session quota per Hermes credential-pool account with interactive CLI fallback | Hermes `credential_pool.openai-codex` + Codex usage API; fallback `codex app-server` JSON-RPC |
 | `claude` | Claude Code | Subscription/session quota and local usage | Anthropic OAuth usage API + Claude local files + Claude CLI refresh |
-| `nous` | Nous | Subscription credits with OAuth refresh retry | Nous Portal OAuth account and token APIs |
+| `nous` | Nous | Total usable credits, credit buckets, and period credit drawdown with OAuth refresh retry | Nous Portal OAuth account and token APIs |
 | `google` | Google AI Studio | Entitlement tier plus model quota rows with OAuth refresh retry | Cloud Code internal entitlement and model/quota endpoints |
 
 ## Data boundaries
@@ -100,7 +100,7 @@ sequenceDiagram
 - Credential values live outside the repo and must not be copied into Markdown.
 - Provider errors and intentional skips are normalized into `ProviderData.meta` rather than crashing the whole table where possible. `meta.skip_reason` renders directly in otherwise blank table rows and JSON includes `status`, `reason`, and safe `detail` fields for skipped providers. Codex pool-account failures stay account-scoped and render as `auth failed`/`api error` rows without hiding other Codex accounts. The legacy single-account app-server fallback still triggers one interactive `codex login` retry on TTY and otherwise renders as `auth failed`.
 - `SnapshotDB` stores normalized numeric output for history; raw provider payloads are not the documentation source. Multi-account Codex snapshots are stored under account-qualified provider keys such as `codex:primary` so history does not collapse separate subscriptions.
-- Codex, Claude, Google, and Nous have quota/subscription semantics that do not map cleanly to a simple dollar balance row.
+- Codex, Claude, and Google have quota/subscription semantics that do not map cleanly to a simple dollar balance row. Nous is credit-based: its table balance is total usable credits, while JSON preserves subscription/top-up bucket details.
 - Exa dashboard/admin calls are intentionally disabled unless `EXA_ENABLED=true` is loaded from the environment or `~/.hermes/.env`.
 - Claude OAuth refresh is delegated to the Claude Code CLI with a minimal prompt when the cached access token is near expiry or the usage endpoint rejects it with an auth/rate-limit status. Claude tier display prefers OAuth `subscriptionType` and falls back to local `oauthAccount.organizationType`; billing transport labels are not displayed as tiers.
 - Nous OAuth refresh runs before expiry, retries once after `401`/`403` account API responses, and can be forced with `ai-usage --refresh-auth nous` when `~/.hermes/auth.json` includes a Nous refresh token.

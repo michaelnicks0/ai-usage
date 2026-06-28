@@ -202,14 +202,25 @@ def render_json(
             entry.pop("balance", None)
             entry.pop("period_spend", None)
 
-        # Nous: subscription details
+        # Nous: credit-bucket details
         if name == "nous":
             nx = d.extra
             if nx:
-                entry["plan_type"] = nx.get("plan_type")
-                entry["monthly_charge"] = nx.get("monthly_charge")
-                entry["credits_remaining"] = nx.get("credits_remaining")
-                entry["current_period_end"] = nx.get("current_period_end")
+                for key in (
+                    "plan_type",
+                    "monthly_charge",
+                    "monthly_credits",
+                    "credits_remaining",
+                    "total_usable_credits",
+                    "subscription_credits_remaining",
+                    "top_up_credits_remaining",
+                    "purchased_credits_remaining",
+                    "rollover_credits",
+                    "current_period_end",
+                    "member_spend_usd",
+                    "period_spend_source",
+                ):
+                    entry[key] = nx.get(key)
                 # Compute renews_in from period end
                 pe = nx.get("current_period_end")
                 if pe:

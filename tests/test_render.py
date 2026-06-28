@@ -90,17 +90,29 @@ class TestRenderJson:
 
     def test_nous(self):
         pd = ProviderData(
-            balance=21.74, spent=20.00,
+            balance=39.84, spent=25.66,
             extra={
                 "plan_type": "Plus",
-                "credits_remaining": 21.74,
+                "credits_remaining": 39.84,
+                "total_usable_credits": 39.84,
+                "subscription_credits_remaining": 0.0,
+                "top_up_credits_remaining": 39.84,
+                "purchased_credits_remaining": 39.84,
                 "monthly_charge": 20.00,
-                "current_period_end": "2026-06-11",
+                "monthly_credits": 22.00,
+                "rollover_credits": 3.66,
+                "current_period_end": "2026-07-11",
             },
         )
         result = render_json({"nous": pd})
         parsed = json.loads(result)
-        assert parsed["api"]["nous"]["credits_remaining"] == 21.74
+        nous = parsed["api"]["nous"]
+        assert nous["balance"] == 39.84
+        assert nous["period_spend"] == 25.66
+        assert nous["credits_remaining"] == 39.84
+        assert nous["subscription_credits_remaining"] == 0.0
+        assert nous["top_up_credits_remaining"] == 39.84
+        assert nous["monthly_credits"] == 22.0
 
     def test_skip_reason_json(self):
         pd = ProviderData(
@@ -142,6 +154,24 @@ class TestRenderTable:
         assert "disabled" in result
         assert "Nous" in result
         assert "auth missing" in result
+
+    def test_nous_table_reports_total_balance_and_period_spend(self):
+        result = render_table({
+            "nous": ProviderData(
+                balance=39.84,
+                spent=25.66,
+                extra={
+                    "plan_type": "Plus",
+                    "credits_remaining": 39.84,
+                    "subscription_credits_remaining": 0.0,
+                    "top_up_credits_remaining": 39.84,
+                },
+            )
+        })
+
+        assert "Nous" in result
+        assert "$39.84" in result
+        assert "$25.66" in result
 
     def test_codex_detail_section(self):
         pd = ProviderData(

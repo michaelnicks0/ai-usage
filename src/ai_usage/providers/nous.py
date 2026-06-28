@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -192,6 +193,60 @@ def _nous_get_token(initial: str) -> tuple[str, dict]:
         return "", meta
 
 
+def _amount(value: object) -> float | None:
+    """Coerce a Nous numeric field to a finite dollar amount."""
+    if value is None or value == "":
+        return None
+    try:
+        amount = float(value)
+    except (TypeError, ValueError):
+        return None
+    return amount if math.isfinite(amount) else None
+
+
+def _round_amount(value: object) -> float | None:
+    amount = _amount(value)
+    return round(amount, 2) if amount is not None else None
+
+
+def _first_amount(*values: object) -> float | None:
+    for value in values:
+        amount = _amount(value)
+        if amount is not None:
+            return amount
+    return None
+
+
+def _period_spend(
+    *,
+    member_spend: float | None,
+    monthly_credits: float | None,
+    rollover_credits: float | None,
+    subscription_credits_remaining: float | None,
+) -> tuple[float | None, str | None]:
+    """Return best available period usage spend and its source.
+
+    The Portal account API exposes ``member_spend_usd``, but live payloads can
+    report a value lower than the subscription credits already consumed. The
+    billing UI's "Spent This Period" is credit-consumption oriented, so prefer
+    the larger of explicit member spend and inferred subscription credit drawdown.
+    """
+    inferred = None
+    if monthly_credits is not None and subscription_credits_remaining is not None:
+        period_subscription_pool = monthly_credits + (rollover_credits or 0.0)
+        inferred = max(0.0, period_subscription_pool - subscription_credits_remaining)
+
+    if member_spend is not None and inferred is not None:
+        if inferred >= member_spend:
+            return inferred, "subscription_credits_consumed"
+        return member_spend, "member_spend_usd"
+    if member_spend is not None:
+        return member_spend, "member_spend_usd"
+    if inferred is not None:
+        return inferred, "subscription_credits_consumed"
+    return None, None
+
+
 @registry.register
 class NousProvider(Provider):
     name = "nous"
@@ -247,19 +302,64 @@ class NousProvider(Provider):
             return data
 
         sub = r.get("subscription", {})
-        credits = sub.get("credits_remaining")
-        charge = sub.get("monthly_charge")
+        if not isinstance(sub, dict):
+            sub = {}
+        access = r.get("paid_service_access", {})
+        if not isinstance(access, dict):
+            access = {}
+
+        subscription_credits = _first_amount(
+            access.get("subscription_credits_remaining"),
+            sub.get("credits_remaining"),
+        )
+        top_up_credits = _first_amount(
+            access.get("purchased_credits_remaining"),
+            r.get("purchased_credits_remaining"),
+        )
+        total_usable = _first_amount(access.get("total_usable_credits"))
+        if total_usable is None:
+            if subscription_credits is not None or top_up_credits is not None:
+                total_usable = (subscription_credits or 0.0) + (top_up_credits or 0.0)
+            else:
+                total_usable = _amount(sub.get("credits_remaining"))
+
+        monthly_charge = _first_amount(
+            sub.get("monthly_charge"),
+            access.get("subscription_monthly_charge"),
+        )
+        monthly_credits = _amount(sub.get("monthly_credits"))
+        rollover_credits = _amount(sub.get("rollover_credits"))
+        member_spend = _amount(access.get("member_spend_usd"))
+        period_spend, period_spend_source = _period_spend(
+            member_spend=member_spend,
+            monthly_credits=monthly_credits,
+            rollover_credits=rollover_credits,
+            subscription_credits_remaining=subscription_credits,
+        )
         period_end = sub.get("current_period_end")
 
-        data.balance = round(float(credits), 2) if credits is not None else None
-        data.spent = round(float(charge), 2) if charge is not None else None
+        data.balance = _round_amount(total_usable)
+        data.spent = _round_amount(period_spend)
 
+        tier = (
+            sub.get("tier")
+            if sub.get("tier") is not None
+            else access.get("subscription_tier")
+        )
         data.extra = {
             "plan_type": sub.get("plan", "unknown"),
-            "tier": sub.get("tier"),
-            "monthly_charge": data.spent,
+            "tier": tier,
+            "monthly_charge": _round_amount(monthly_charge),
+            "monthly_credits": _round_amount(monthly_credits),
             "credits_remaining": data.balance,
+            "total_usable_credits": data.balance,
+            "subscription_credits_remaining": _round_amount(subscription_credits),
+            "top_up_credits_remaining": _round_amount(top_up_credits),
+            "purchased_credits_remaining": _round_amount(top_up_credits),
+            "rollover_credits": _round_amount(rollover_credits),
             "current_period_end": period_end,
+            "member_spend_usd": _round_amount(member_spend),
+            "period_spend_source": period_spend_source,
         }
 
         return data

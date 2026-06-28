@@ -26,11 +26,21 @@ class _JsonResponse:
 
 def _account_payload() -> dict:
     return {
+        "paid_service_access": {
+            "allowed": True,
+            "has_active_subscription": True,
+            "subscription_credits_remaining": 17.25,
+            "purchased_credits_remaining": 0,
+            "total_usable_credits": 17.25,
+        },
+        "purchased_credits_remaining": 0,
         "subscription": {
             "plan": "Plus",
             "tier": "plus",
             "credits_remaining": 17.25,
             "monthly_charge": 20,
+            "monthly_credits": 22,
+            "rollover_credits": 0,
             "current_period_end": "2026-06-30T00:00:00Z",
         }
     }
@@ -78,7 +88,7 @@ def test_missing_access_token_refreshes_from_refresh_token(
     data = NousProvider(credentials, mock_http).fetch()
 
     assert data.balance == 17.25
-    assert data.spent == 20.0
+    assert data.spent == 4.75
     assert data.meta["token_refreshed"] is True
     headers = mock_http.get_json.call_args.args[1]
     assert headers["Authorization"] == "Bearer access-new"
@@ -123,3 +133,50 @@ def test_rejected_token_refreshes_and_retries(monkeypatch, tmp_path, credentials
     assert data.meta["token_refreshed"] is True
     retry_headers = mock_http.get_json.call_args_list[1].args[1]
     assert retry_headers["Authorization"] == "Bearer access-fresh"
+
+
+def test_fetch_reports_total_usable_and_credit_breakdown(credentials, mock_http):
+    credentials.nous_access_token = "access-token"
+    mock_http.get_json.return_value = {
+        "paid_service_access": {
+            "allowed": True,
+            "has_active_subscription": True,
+            "active_subscription_is_paid": True,
+            "subscription_tier": 2,
+            "subscription_monthly_charge": 20,
+            "subscription_credits_remaining": 0,
+            "purchased_credits_remaining": 39.83518781012158,
+            "total_usable_credits": 39.83518781012158,
+            "member_spend_usd": "20.4553837444686889614614",
+        },
+        "purchased_credits_remaining": 39.83518781012158,
+        "subscription": {
+            "plan": "Plus",
+            "tier": 2,
+            "credits_remaining": 0,
+            "monthly_charge": 20,
+            "monthly_credits": 22,
+            "rollover_credits": 3.66,
+            "current_period_end": "2026-07-11T15:17:45.000Z",
+        },
+    }
+
+    data = NousProvider(credentials, mock_http).fetch()
+
+    assert data.balance == 39.84
+    assert data.spent == 25.66
+    assert data.extra == {
+        "plan_type": "Plus",
+        "tier": 2,
+        "monthly_charge": 20.0,
+        "monthly_credits": 22.0,
+        "credits_remaining": 39.84,
+        "total_usable_credits": 39.84,
+        "subscription_credits_remaining": 0.0,
+        "top_up_credits_remaining": 39.84,
+        "purchased_credits_remaining": 39.84,
+        "rollover_credits": 3.66,
+        "current_period_end": "2026-07-11T15:17:45.000Z",
+        "member_spend_usd": 20.46,
+        "period_spend_source": "subscription_credits_consumed",
+    }
