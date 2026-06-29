@@ -8,7 +8,7 @@
 | Status | Active |
 | Last updated | 2026-06-28 |
 | Visual front door | [`../ai-usage-high-level-doc.html`](../ai-usage-high-level-doc.html) |
-| Generated companions | `docs/*.html`, `README.html`, `AGENTS.html`, and `AUDIT.html` from `scripts/render_docs.py` |
+| Generated companions | `docs/*.html`, `README.html`, and `AGENTS.html` from `scripts/render_docs.py` |
 
 ## Reading path
 

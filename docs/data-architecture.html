@@ -149,10 +149,6 @@ table.cmdtable code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
 <td>Generated HTML companion</td>
 <td><code>docs/data-architecture.html</code> from <code>scripts/render_docs.py</code></td>
 </tr>
-<tr>
-<td>Legacy root render</td>
-<td><code>data-architecture.html</code></td>
-</tr>
 </tbody>
 </table>
 <h2 id="overview">Overview</h2>
@@ -228,7 +224,7 @@ table.cmdtable code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
 <h2 id="documentation-rules">Documentation rules</h2>
 <ul>
 <li>Keep this Markdown document synchronized with provider endpoint and normalized-field changes.</li>
-<li>Treat root-level <code>architecture.html</code> and <code>data-architecture.html</code> as legacy rendered references. Regenerate same-path <code>docs/*.html</code> companions from canonical Markdown with <code>scripts/render_docs.py</code>.</li>
+<li>Treat root-level <code>architecture.html</code> as a legacy rendered reference. Regenerate same-path <code>docs/*.html</code> companions from canonical Markdown with <code>scripts/render_docs.py</code>.</li>
 <li>Never document real credential values; use environment-variable names and <code>[REDACTED]</code> placeholders only.</li>
 </ul>
   </article>

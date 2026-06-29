@@ -162,7 +162,7 @@ table.cmdtable code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
    - <code>mermaid-theme.json</code></li>
 <li>Render Markdown companions with <code>scripts/render_docs.py --repo . --slug ai-usage</code> and commit generated HTML next to the Markdown source.</li>
 <li>Keep Markdown as canonical source; do not hand-edit generated HTML.</li>
-<li>Retain legacy root-level <code>architecture.html</code> and <code>data-architecture.html</code> as historical references while using same-path <code>docs/*.html</code> companions for the current generated browser layer.</li>
+<li>Retain only the legacy root-level <code>architecture.html</code> historical reference; stale root audit/data renders are removed while same-path <code>docs/*.html</code> companions provide the current generated browser layer.</li>
 </ol>
 <h2 id="consequences">Consequences</h2>
 <ul>

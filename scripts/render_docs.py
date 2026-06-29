@@ -183,10 +183,38 @@ def _retheme_classdefs(code: str) -> str:
     return re.sub(r"(classDef\s+[\w, ]+?\s+)([^\n;]+;?)", repl, code)
 
 
+def _retheme_style_directives(code: str) -> str:
+    """Rewrite light-theme Mermaid `style <node> ...` directives to dark theme.
+
+    Structurizr Mermaid exports use per-node `style 1 fill:#dbeafe,...` directives
+    rather than classDef blocks. Those inline styles emit SVG `!important` rules, so
+    the global Mermaid theme cannot override them. Retheme them at source in the
+    HTML renderer while leaving the committed `.mmd`/`.md` artifacts untouched.
+    """
+    def repl(m):
+        head, body = m.group(1), m.group(2)
+        fill_m = re.search(r"fill:\s*(#[0-9a-fA-F]{3,6})", body)
+        if not fill_m:
+            return m.group(0)
+        fam = _color_family(fill_m.group(1))
+        if not fam:
+            return m.group(0)
+        fill, stroke, text = _DARK_FAMILY[fam]
+        body = re.sub(r"fill:\s*#[0-9a-fA-F]{3,6}", f"fill:{fill}", body)
+        body = re.sub(r"stroke:\s*#[0-9a-fA-F]{3,6}", f"stroke:{stroke}", body)
+        if re.search(r"color:\s*#[0-9a-fA-F]{3,6}", body):
+            body = re.sub(r"color:\s*#[0-9a-fA-F]{3,6}", f"color:{text}", body)
+        else:
+            body = body.rstrip(";") + f",color:{text}"
+        return head + body
+
+    return re.sub(r"(?m)^(\s*style\s+\S+\s+)([^\n]+)$", repl, code)
+
+
 def render_mermaid(code: str, retheme: bool = True) -> str:
     """Render a Mermaid block to inline SVG (cached by content + theme hash)."""
     if retheme:
-        code = _retheme_classdefs(code)
+        code = _retheme_style_directives(_retheme_classdefs(code))
     theme_sig = MMD_THEME.read_text() if MMD_THEME.exists() else "dark"
     h = hashlib.sha1((code + "\x00" + theme_sig).encode("utf-8")).hexdigest()[:16]
     svg_path = MMD_CACHE / f"{h}.svg"
@@ -199,13 +227,26 @@ def render_mermaid(code: str, retheme: bool = True) -> str:
             cmd += ["-c", str(MMD_THEME)]
         else:
             cmd += ["-t", "dark"]
-        subprocess.run(cmd, capture_output=True, text=True)
+        env = os.environ.copy()
+        if "PUPPETEER_EXECUTABLE_PATH" not in env:
+            candidates = sorted(
+                Path.home().glob(".cache/puppeteer/chrome-headless-shell/**/chrome-headless-shell"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            if candidates:
+                env["PUPPETEER_EXECUTABLE_PATH"] = str(candidates[0])
+        subprocess.run(cmd, capture_output=True, text=True, env=env)
     if not svg_path.exists():
         return f'<pre class="mmd-fallback">{html.escape(code)}</pre>'
     svg = svg_path.read_text()
     svg = re.sub(r"<\?xml[^>]*\?>", "", svg)
     svg = re.sub(r"<!DOCTYPE[^>]*>", "", svg, flags=re.IGNORECASE)
     svg = svg.strip()
+    # Structurizr Mermaid exports include `linkStyle default fill:#ffffff`; after
+    # theming, Mermaid carries that into edge-path inline `fill:#ffffff` styles.
+    # Edges should be stroked by the showcase theme, not white-filled.
+    svg = svg.replace('style="fill:#ffffff;;;fill:#ffffff"', 'style="fill:none"')
 
     # Mermaid hardcodes a TRANSLUCENT label background in its own emitted <style>
     # (e.g. .edgeLabel rect{opacity:0.5}, .edgeLabel .label rect{fill:#16264a;opacity:0.5},
@@ -314,14 +355,48 @@ def _relpath_to_root(doc_path: Path, repo: Path) -> str:
     return "" if rel == "." else rel + "/"
 
 
+_C4_DOT_IMG_RE = re.compile(
+    r'<p><img alt="[^"]+" src="[^"]*dot-rendered/structurizr-[^"]+\.svg" /></p>'
+)
+
+
+def _replace_c4_graphviz_with_showcase_mermaid(body_html: str, raw: str) -> str:
+    """HTML-only C4 treatment: display themed Mermaid while keeping source MD intact.
+
+    The generated C4 Markdown intentionally prefers committed Graphviz SVG artifacts for
+    GitHub/Markdown readability and retains Mermaid source in a details block. For the
+    polished HTML companions, Michael wants the visible C4 diagrams to use the same
+    showcase Mermaid theme as the rest of the high-level docs. Do that at render time:
+    replace the visible Graphviz image paragraphs with inline themed Mermaid figures, but
+    leave the Markdown files, generated Graphviz artifacts, and collapsible source blocks
+    unchanged.
+    """
+    mermaids = [m.group(1) for m in _MERMAID_RE.finditer(raw)]
+    if not mermaids:
+        return body_html
+    rendered = iter(render_mermaid(code, retheme=True) for code in mermaids)
+
+    def repl(_m):
+        try:
+            return next(rendered)
+        except StopIteration:
+            return _m.group(0)
+
+    body_html = _C4_DOT_IMG_RE.sub(repl, body_html)
+    body_html = body_html.replace(
+        "Preferred Markdown display: Graphviz SVG. Mermaid source is retained below for text review.",
+        "HTML display: showcase-themed Mermaid render. Markdown keeps the Graphviz SVG, and Mermaid source is retained below for text review.",
+    )
+    return body_html
+
+
 def render_doc(doc_path: Path, repo: Path, slug: str, rendered: set) -> str:
     raw = doc_path.read_text()
 
-    # C4/Structurizr artifact pages already embed the committed Graphviz/SVG renders
-    # and keep Mermaid under details as source. Do not pre-render those source fences
-    # with the house Mermaid theme: doing so injects showcase palette CSS into C4
-    # pages (#16264a etc.) even when retheme=False. Source-level docs/architecture.md
-    # is not under the docs/architecture/ directory, so it still renders its Mermaid.
+    # C4/Structurizr artifact pages get an HTML-only display swap below: visible
+    # Graphviz images become themed Mermaid figures, while the Mermaid source fences
+    # remain code inside <details>. Source-level docs/architecture.md is not under
+    # the docs/architecture/ directory, so it follows the normal Markdown rendering.
     architecture_artifact_doc = "architecture" in doc_path.parts
     if architecture_artifact_doc:
         body_md, mermaids = raw, []
@@ -338,6 +413,9 @@ def render_doc(doc_path: Path, repo: Path, slug: str, rendered: set) -> str:
         extension_configs={"codehilite": {"noclasses": True, "pygments_style": "monokai"}},
     )
     body_html = converter.convert(body_md)
+
+    if architecture_artifact_doc:
+        body_html = _replace_c4_graphviz_with_showcase_mermaid(body_html, raw)
 
     # reinsert rendered mermaid (markdown wraps the placeholder in <p>…</p>)
     for i, code in enumerate(mermaids):

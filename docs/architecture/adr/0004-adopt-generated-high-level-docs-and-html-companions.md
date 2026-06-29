@@ -25,7 +25,7 @@ Adopt a generated documentation layer:
    - `mermaid-theme.json`
 4. Render Markdown companions with `scripts/render_docs.py --repo . --slug ai-usage` and commit generated HTML next to the Markdown source.
 5. Keep Markdown as canonical source; do not hand-edit generated HTML.
-6. Retain legacy root-level `architecture.html` and `data-architecture.html` as historical references while using same-path `docs/*.html` companions for the current generated browser layer.
+6. Retain only the legacy root-level `architecture.html` historical reference; stale root audit/data renders are removed while same-path `docs/*.html` companions provide the current generated browser layer.
 
 ## Consequences
 

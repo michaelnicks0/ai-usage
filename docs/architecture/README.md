@@ -59,7 +59,7 @@ The C4 model was grounded in these repo artifacts:
 | `docs/data-architecture.md` | `ProviderData`/`TokenData` field semantics and provider-to-field mapping. |
 | `src/ai_usage/*.py` | Entry point, config loading, fetch orchestration, HTTP retry behavior, SQLite history, rendering, and normalized dataclasses. |
 | `src/ai_usage/providers/*.py` | Provider registrations, external API/CLI/file dependencies, OAuth refresh behavior, and normalization paths. |
-| `AUDIT.md` | Current provider count, SQLite path, default behavior, and legacy rendered-doc caveat. |
+| `docs/TESTS.md` | Generated test inventory and verification commands for provider/reporting coverage. |
 
 ## Regeneration
 

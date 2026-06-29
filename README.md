@@ -11,7 +11,7 @@ Cross-provider balance, spend, subscription quota, and token usage — one comma
 | High-level front door | [`ai-usage-high-level-doc.html`](ai-usage-high-level-doc.html) |
 | Documentation map | [`docs/README.md`](docs/README.md) · [`docs/README.html`](docs/README.html) |
 | Canonical architecture docs | C4 model: [`docs/architecture/workspace.dsl`](docs/architecture/workspace.dsl); source-level docs: [`docs/architecture.md`](docs/architecture.md), [`docs/data-architecture.md`](docs/data-architecture.md) |
-| Generated HTML companions | [`README.html`](README.html), `docs/*.html`, plus legacy root renders [`architecture.html`](architecture.html), [`data-architecture.html`](data-architecture.html) |
+| Generated HTML companions | [`README.html`](README.html) and same-path `docs/*.html`; stale root audit/data renders are not retained |
 
 ### Architecture map
 
@@ -232,7 +232,7 @@ Nous Research uses subscription credits ($20+/mo) that deplete before separately
 
 Google AI Studio / Antigravity separates entitlement from quota availability. The displayed tier comes from Cloud Code `loadCodeAssist` (`paidTier.id`: `g1-ultra-tier`, `g1-pro-tier`, `free-tier`, etc.). Per-model quota rows come from `fetchAvailableModels`. Model availability alone is not treated as proof of an active Google One / Google AI subscription, because quota/model responses can persist after plan changes.
 
-[High-level doc](ai-usage-high-level-doc.html) · [Documentation map](docs/README.md) · [Executive brief](docs/EXECUTIVE_BRIEF.md) · [User guide](docs/USER_GUIDE.md) · [Test inventory](docs/TESTS.md) · [C4 architecture](docs/architecture/README.md) · [Generated diagrams](docs/architecture/c4-diagrams.md) · [Source architecture](docs/architecture.md) · [Data architecture](docs/data-architecture.md) · [ADRs](docs/architecture/adr/README.md) · [Audit report](AUDIT.md)
+[High-level doc](ai-usage-high-level-doc.html) · [Documentation map](docs/README.md) · [Executive brief](docs/EXECUTIVE_BRIEF.md) · [User guide](docs/USER_GUIDE.md) · [Test inventory](docs/TESTS.md) · [C4 architecture](docs/architecture/README.md) · [Generated diagrams](docs/architecture/c4-diagrams.md) · [Source architecture](docs/architecture.md) · [Data architecture](docs/data-architecture.md) · [ADRs](docs/architecture/adr/README.md)
 
 ## API endpoints
 

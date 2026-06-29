@@ -16,10 +16,9 @@ Guidance for AI coding agents working in this repo. Keep changes surgical and ve
 | [`docs/architecture.md`](docs/architecture.md) | Canonical Markdown/Mermaid architecture. |
 | [`docs/data-architecture.md`](docs/data-architecture.md) | Canonical normalized data model and field mapping. |
 | [`docs/architecture/adr/README.md`](docs/architecture/adr/README.md) | Architecture Decision Record index. |
-| [`AUDIT.md`](AUDIT.md) | Code quality audit history. |
 | [`ai-usage-high-level-doc.html`](ai-usage-high-level-doc.html) | Generated visual front door from `scripts/showcase.spec.json`. Do not hand-edit. |
 | [`README.html`](README.html), `docs/*.html` | Generated browser companions from Markdown. Do not hand-edit. |
-| [`architecture.html`](architecture.html), [`data-architecture.html`](data-architecture.html) | Legacy root renders retained as historical references. |
+| [`architecture.html`](architecture.html) | Legacy root architecture render retained as a historical reference. |
 
 ## What this is
 

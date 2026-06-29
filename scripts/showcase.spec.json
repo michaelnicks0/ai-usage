@@ -299,12 +299,6 @@
       "href": "docs/TESTS.html",
       "owns": "Generated inventory and verification commands",
       "altitude": "Verify"
-    },
-    {
-      "doc": "Audit Report",
-      "href": "AUDIT.html",
-      "owns": "Historical code-quality audit trail",
-      "altitude": "History"
     }
   ],
   "footer_provenance": "Metrics grounded on 2026-06-28: 112 tests / 17 files / 18 suites from scripts/generate_test_inventory.py and pytest collection; 10 providers from src/ai_usage/providers; 5 C4 views and 3 ADRs from docs/architecture. No credential values or provider payloads are embedded.",

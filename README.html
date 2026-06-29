@@ -157,7 +157,7 @@ table.cmdtable code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
 </tr>
 <tr>
 <td>Generated HTML companions</td>
-<td><a href="README.html"><code>README.html</code></a>, <code>docs/*.html</code>, plus legacy root renders <a href="architecture.html"><code>architecture.html</code></a>, <a href="data-architecture.html"><code>data-architecture.html</code></a></td>
+<td><a href="README.html"><code>README.html</code></a> and same-path <code>docs/*.html</code>; stale root audit/data renders are not retained</td>
 </tr>
 </tbody>
 </table>
@@ -439,7 +439,7 @@ Google AI Studio  Free       Gemini 3.5 Flash (High)       100%      4h59m
 <p>Claude Code uses subscription/rate-limit windows and local/OAuth usage state. Its model details do not map cleanly to the generic dollar-balance rows.</p>
 <p>Nous Research uses subscription credits ($20+/mo) that deplete before separately purchased/top-up credits as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API with automatic refresh-token retry when Hermes auth state includes a Nous <code>refresh_token</code>. <code>balance</code> is total usable credits; JSON also exposes subscription, top-up/purchased, monthly, and rollover credit buckets. Stored in the <code>api</code> JSON branch (not <code>subscription</code>) since its credit model behaves like API credits.</p>
 <p>Google AI Studio / Antigravity separates entitlement from quota availability. The displayed tier comes from Cloud Code <code>loadCodeAssist</code> (<code>paidTier.id</code>: <code>g1-ultra-tier</code>, <code>g1-pro-tier</code>, <code>free-tier</code>, etc.). Per-model quota rows come from <code>fetchAvailableModels</code>. Model availability alone is not treated as proof of an active Google One / Google AI subscription, because quota/model responses can persist after plan changes.</p>
-<p><a href="ai-usage-high-level-doc.html">High-level doc</a> · <a href="docs/README.html">Documentation map</a> · <a href="docs/EXECUTIVE_BRIEF.html">Executive brief</a> · <a href="docs/USER_GUIDE.html">User guide</a> · <a href="docs/TESTS.html">Test inventory</a> · <a href="docs/architecture/README.html">C4 architecture</a> · <a href="docs/architecture/c4-diagrams.html">Generated diagrams</a> · <a href="docs/architecture.html">Source architecture</a> · <a href="docs/data-architecture.html">Data architecture</a> · <a href="docs/architecture/adr/README.html">ADRs</a> · <a href="AUDIT.html">Audit report</a></p>
+<p><a href="ai-usage-high-level-doc.html">High-level doc</a> · <a href="docs/README.html">Documentation map</a> · <a href="docs/EXECUTIVE_BRIEF.html">Executive brief</a> · <a href="docs/USER_GUIDE.html">User guide</a> · <a href="docs/TESTS.html">Test inventory</a> · <a href="docs/architecture/README.html">C4 architecture</a> · <a href="docs/architecture/c4-diagrams.html">Generated diagrams</a> · <a href="docs/architecture.html">Source architecture</a> · <a href="docs/data-architecture.html">Data architecture</a> · <a href="docs/architecture/adr/README.html">ADRs</a></p>
 <h2 id="api-endpoints">API endpoints</h2>
 <table>
 <thead>

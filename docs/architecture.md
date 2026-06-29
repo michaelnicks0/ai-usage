@@ -7,7 +7,7 @@
 | Runtime entry point | `ai_usage.cli:main` / `ai-usage` |
 | Implementation root | `src/ai_usage/` |
 | Generated HTML companion | `docs/architecture.html` from `scripts/render_docs.py` |
-| Legacy root renders | `architecture.html`, `data-architecture.html` |
+| Legacy root render | `architecture.html` |
 
 ## Scope
 
