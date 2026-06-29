@@ -1,0 +1,312 @@
+{
+  "title": "ai-usage",
+  "slug": "ai-usage",
+  "version": "Python 3.10+ CLI",
+  "tagline_plain": "One command for",
+  "tagline_grad": "AI spend, quota, and token visibility.",
+  "lead": "A local workstation CLI that reports balance, period spend, subscription quota, token usage, and history across AI providers without hiding partial failures.",
+  "sub": "It loads credentials from local files, queries provider APIs or local developer-tool state, normalizes everything into one model, saves snapshots, and renders table or JSON output.",
+  "pills": [
+    {
+      "kind": "blue",
+      "label": "<b>10</b> providers"
+    },
+    {
+      "kind": "local",
+      "label": "<b>Local-first</b> credentials + history"
+    },
+    {
+      "kind": "live",
+      "label": "<b>API + subscription</b> reporting"
+    },
+    {
+      "kind": "priv",
+      "label": "<b>112</b> tests"
+    }
+  ],
+  "metrics": [
+    {
+      "n": "112",
+      "l": "Tests"
+    },
+    {
+      "n": "17",
+      "l": "Test files"
+    },
+    {
+      "n": "18",
+      "l": "Test suites"
+    },
+    {
+      "n": "10",
+      "l": "Providers"
+    },
+    {
+      "n": "5",
+      "l": "C4 views"
+    },
+    {
+      "n": "3",
+      "l": "ADRs"
+    }
+  ],
+  "features_intro": "The tool is narrow on purpose: one normalized reporting surface over heterogeneous billing, quota, and token-usage providers.",
+  "features": [
+    {
+      "icon": "💳",
+      "title": "Balance and spend",
+      "body": "DeepSeek, xAI, OpenRouter, Vast.ai, Exa, X API, and Nous feed the API-credit side of the report when credentials are present."
+    },
+    {
+      "icon": "⏱️",
+      "title": "Subscription quotas",
+      "body": "Codex, Claude Code, and Google AI Studio render session, weekly, or per-model quota windows separately from API-credit balances."
+    },
+    {
+      "icon": "📊",
+      "title": "Token accounting",
+      "body": "Providers that expose usage return cached input, uncached input, output, totals, and optional per-model rows."
+    },
+    {
+      "icon": "🧾",
+      "title": "Table or JSON",
+      "body": "The same normalized data can be read as aligned terminal tables or machine-readable JSON with api and subscription branches."
+    },
+    {
+      "icon": "🗃️",
+      "title": "Local history",
+      "body": "Every live fetch saves normalized snapshot rows in a local SQLite database for --history reports and provider-specific filtering."
+    },
+    {
+      "icon": "🧯",
+      "title": "Visible failures",
+      "body": "Missing auth, intentional skips, timeouts, and provider-specific errors stay visible through ProviderData.meta instead of erasing the row."
+    }
+  ],
+  "flow_intro": "The runtime spine is small and auditable: parse, load, fetch, normalize, persist, render.",
+  "flow": [
+    {
+      "title": "Parse operator intent",
+      "body": "argparse resolves provider selection, model detail, JSON output, history mode, and the Nous refresh helper."
+    },
+    {
+      "title": "Load local credentials",
+      "body": "config.load_credentials reads ~/.hermes/.env, fallback key files, Hermes auth state, and provider-specific OAuth files."
+    },
+    {
+      "title": "Build provider adapters",
+      "body": "The registry constructs only the requested Provider subclasses, preserving the registered provider order for output."
+    },
+    {
+      "title": "Fetch with isolation",
+      "body": "fetch_all runs provider.fetch() calls concurrently when useful, backed by a retrying urllib HTTP client and total timeout."
+    },
+    {
+      "title": "Normalize provider data",
+      "body": "Provider modules convert raw HTTP, CLI, or local-file responses into ProviderData, TokenData, extras, and metadata."
+    },
+    {
+      "title": "Save snapshot rows",
+      "body": "SnapshotDB writes normalized balance, spend, and token columns to ~/.hermes/ai-usage.db; Codex accounts get account-qualified keys."
+    },
+    {
+      "title": "Render the report",
+      "body": "render_table, render_json, render_history, or render_history_json produces the operator-facing output."
+    }
+  ],
+  "model_intro": "Think of ai-usage as a narrow reporting hub: provider-specific adapters on the right, one normalized local report on the left.",
+  "hub": {
+    "label": "ai-usage",
+    "sub": "local CLI hub"
+  },
+  "spokes": [
+    {
+      "label": "Live fetch",
+      "sub": "provider APIs + local CLIs",
+      "tone": "live"
+    },
+    {
+      "label": "Local credentials",
+      "sub": "env files + OAuth state",
+      "tone": "local"
+    },
+    {
+      "label": "Normalized model",
+      "sub": "ProviderData + TokenData",
+      "tone": "blue"
+    },
+    {
+      "label": "History snapshots",
+      "sub": "SQLite rows under ~/.hermes",
+      "tone": "violet"
+    },
+    {
+      "label": "Visible errors",
+      "sub": "meta fields, not silent drops",
+      "tone": "priv"
+    }
+  ],
+  "model_cap": "Each provider keeps its quirks inside its adapter; the CLI, renderer, and history database consume one normalized shape.",
+  "commands_intro": "The CLI surface is intentionally compact: provider selection, model detail, JSON, history, and one auth-refresh helper.",
+  "commands_col3": "Touches",
+  "commands": [
+    {
+      "group": "Default report",
+      "cmds": "<code>./ai-usage</code> <code>ai-usage</code>",
+      "touches": "All registered providers, local credentials, snapshot DB, table renderer"
+    },
+    {
+      "group": "Provider selection",
+      "cmds": "<code>-p xai</code> <code>-p deepseek,xai,codex</code>",
+      "touches": "Only requested provider adapters"
+    },
+    {
+      "group": "Token/model detail",
+      "cmds": "<code>-m</code> <code>-m -p deepseek,xai</code>",
+      "touches": "Per-model rows when provider responses include model detail"
+    },
+    {
+      "group": "JSON output",
+      "cmds": "<code>-j</code> <code>-j -m</code>",
+      "touches": "Machine-readable api/subscription JSON branches"
+    },
+    {
+      "group": "History",
+      "cmds": "<code>--history</code> <code>--history-provider xai</code> <code>--history-limit 30</code>",
+      "touches": "Local SQLite snapshot database"
+    },
+    {
+      "group": "Auth refresh",
+      "cmds": "<code>--refresh-auth nous</code>",
+      "touches": "Nous OAuth state in Hermes auth data"
+    },
+    {
+      "group": "Help",
+      "cmds": "<code>help</code> <code>--help</code>",
+      "touches": "Built-in CLI reference only"
+    }
+  ],
+  "audiences_intro": "Three doors in, depending on whether you need value, operation, or implementation depth.",
+  "audiences": [
+    {
+      "cls": "exec",
+      "icon": "📌",
+      "tag": "Decision-makers",
+      "title": "Executive Brief",
+      "body": "Value, maturity signals, and risk posture in a short code-free read.",
+      "href": "docs/EXECUTIVE_BRIEF.html",
+      "go": "Read the brief"
+    },
+    {
+      "cls": "user",
+      "icon": "⌨️",
+      "tag": "Operators",
+      "title": "User Guide",
+      "body": "First-run journey, command routing, output rules, and troubleshooting.",
+      "href": "docs/USER_GUIDE.html",
+      "go": "Start using it"
+    },
+    {
+      "cls": "maint",
+      "icon": "🏗️",
+      "tag": "Maintainers",
+      "title": "Architecture & C4",
+      "body": "Source-level architecture, normalized data model, generated C4 atlas, and ADRs.",
+      "href": "docs/architecture/README.html",
+      "go": "Go deep"
+    }
+  ],
+  "boundary_title": "The local data boundary",
+  "boundary_intro": "The repo documents credential locations and normalized fields, but real credentials and raw provider payloads stay outside committed artifacts.",
+  "boundary": {
+    "inside_title": "🔒 LOCAL WORKSTATION BOUNDARY",
+    "inside": [
+      {
+        "title": "CLI process",
+        "sub": "Python entry point\n+ provider registry",
+        "tone": "blue"
+      },
+      {
+        "title": "Credential files",
+        "sub": "~/.hermes/.env\n+ OAuth JSON",
+        "tone": "local"
+      },
+      {
+        "title": "Snapshot DB",
+        "sub": "normalized rows\nno raw payloads",
+        "tone": "violet"
+      }
+    ],
+    "blocked": [
+      {
+        "title": "🚫 Source control",
+        "sub": "no credential values"
+      },
+      {
+        "title": "🚫 History store",
+        "sub": "no raw payload copies"
+      }
+    ]
+  },
+  "boundary_cap": "The dashed paths are documentation rules: credentials are read locally, normalized snapshots are stored locally, and raw provider payloads are not the committed source of truth.",
+  "boundary_note": "Data-boundary details are maintained in <a href=\"docs/data-architecture.html\">Data Architecture</a>; credential handling rules are in <a href=\"docs/USER_GUIDE.html\">User Guide</a> and <a href=\"README.html\">README</a>.",
+  "docmap_intro": "This page is the visual front door. Markdown stays canonical; rendered HTML companions keep browser navigation styled and drift-checked.",
+  "docmap": [
+    {
+      "doc": "Documentation Map",
+      "href": "docs/README.html",
+      "owns": "Reading path and generated artifact contract",
+      "altitude": "Route map"
+    },
+    {
+      "doc": "Executive Brief",
+      "href": "docs/EXECUTIVE_BRIEF.html",
+      "owns": "Value, maturity, and risk posture",
+      "altitude": "30,000 ft"
+    },
+    {
+      "doc": "User Guide",
+      "href": "docs/USER_GUIDE.html",
+      "owns": "Task-first CLI usage and troubleshooting",
+      "altitude": "10,000 ft"
+    },
+    {
+      "doc": "README",
+      "href": "README.html",
+      "owns": "Exact commands, providers, endpoints, setup",
+      "altitude": "Ground"
+    },
+    {
+      "doc": "Source Architecture",
+      "href": "docs/architecture.html",
+      "owns": "Component model and live-fetch flow",
+      "altitude": "Maintainer"
+    },
+    {
+      "doc": "Data Architecture",
+      "href": "docs/data-architecture.html",
+      "owns": "ProviderData, TokenData, and field mapping",
+      "altitude": "Maintainer"
+    },
+    {
+      "doc": "C4 Architecture",
+      "href": "docs/architecture/README.html",
+      "owns": "Structurizr model, generated atlas, ADRs",
+      "altitude": "Maintainer"
+    },
+    {
+      "doc": "Tests",
+      "href": "docs/TESTS.html",
+      "owns": "Generated inventory and verification commands",
+      "altitude": "Verify"
+    },
+    {
+      "doc": "Audit Report",
+      "href": "AUDIT.html",
+      "owns": "Historical code-quality audit trail",
+      "altitude": "History"
+    }
+  ],
+  "footer_provenance": "Metrics grounded on 2026-06-28: 112 tests / 17 files / 18 suites from scripts/generate_test_inventory.py and pytest collection; 10 providers from src/ai_usage/providers; 5 C4 views and 3 ADRs from docs/architecture. No credential values or provider payloads are embedded.",
+  "out": "ai-usage-high-level-doc.html"
+}

@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tests — ai-usage</title>
+<style>
+:root{--bg:#060d18;--bg2:#0a1426;--panel:#0e1a30;--card:#111f38;--line:#21324f;--line2:#2c4060;--text:#eaf2ff;--muted:#9fb1cc;--dim:#6f82a0;--blue:#5aa6ff;--blue2:#3b82f6;--cyan:#52d4ff;--green:#5be19c;--amber:#ffb454;--rose:#ff6f9c;--violet:#b79bff;--ink:#04122a}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;color:var(--text);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,ui-sans-serif,system-ui,sans-serif;background:radial-gradient(1100px 520px at 78% -8%,rgba(59,130,246,.22),transparent 60%),radial-gradient(820px 480px at 6% 4%,rgba(82,212,255,.12),transparent 55%),radial-gradient(700px 700px at 92% 96%,rgba(91,225,156,.08),transparent 55%),var(--bg);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:30px 22px 70px}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+code{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#08152b;border:1px solid var(--line);border-radius:6px;padding:.1em .42em;color:#d6e6ff}
+h1,h2,h3{letter-spacing:-.02em;margin:0}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;color:var(--cyan);font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-size:.72rem}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 16px 2px rgba(82,212,255,.85);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+.hero{position:relative;border:1px solid var(--line2);border-radius:26px;padding:38px 36px 30px;margin-bottom:18px;background:linear-gradient(165deg,rgba(31,52,92,.55),rgba(10,20,38,.7));box-shadow:0 30px 90px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05);overflow:hidden}
+.hero h1{font-size:clamp(2.3rem,5.2vw,3.9rem);line-height:1.02;margin:14px 0 12px}
+.hero h1 .g{background:linear-gradient(92deg,var(--cyan),var(--blue) 55%,var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lead{color:#cfe0f7;font-size:1.12rem;max-width:62ch;margin:0 0 8px}
+.hero .sub{color:var(--muted);max-width:64ch}
+.pillbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pill{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:#dce8fb;background:rgba(11,22,42,.7);border:1px solid var(--line2);border-radius:999px;padding:7px 13px}
+.pill b{color:#fff}.pill .k{width:7px;height:7px;border-radius:50%}
+.k.live{background:var(--amber)}.k.local{background:var(--green)}.k.priv{background:var(--rose)}.k.blue{background:var(--blue)}
+.metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:18px 0 6px}
+.metric{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:16px;padding:15px 14px;text-align:center}
+.metric .n{font-size:1.85rem;font-weight:800;letter-spacing:-.03em;background:linear-gradient(180deg,#fff,#bcd2f2);-webkit-background-clip:text;background-clip:text;color:transparent}
+.metric .l{display:block;color:var(--dim);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+@media(max-width:880px){.metrics{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.metrics{grid-template-columns:repeat(2,1fr)}}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 26px}
+.toc a{font-size:.84rem;color:#cfe0f7;border:1px solid var(--line2);background:rgba(10,20,38,.6);border-radius:999px;padding:8px 14px}
+.toc a:hover{border-color:var(--cyan);text-decoration:none;color:#fff}
+section.block{margin:30px 0}
+.block>h2{font-size:1.5rem;margin-bottom:6px;display:flex;align-items:center;gap:11px}
+.block>h2 .num{font-size:.8rem;color:var(--ink);background:linear-gradient(180deg,var(--cyan),var(--blue));width:26px;height:26px;border-radius:8px;display:inline-grid;place-items:center;font-weight:800}
+.block>p.intro{color:var(--muted);max-width:74ch;margin:6px 0 16px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.3)}
+.figure{border:1px solid var(--line);border-radius:20px;background:radial-gradient(700px 300px at 50% 0,rgba(35,60,105,.4),rgba(8,17,33,.6));padding:24px;overflow:hidden}
+.figure svg{display:block;width:100%;height:auto}
+.cap{color:var(--dim);font-size:.82rem;text-align:center;margin-top:12px}
+.lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:820px){.lanes{grid-template-columns:1fr}}
+.lane{position:relative;border:1px solid var(--line2);border-radius:18px;padding:20px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01));transition:transform .15s ease,border-color .15s ease}
+.lane:hover{transform:translateY(-3px);border-color:var(--cyan)}
+.lane .tag{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.lane.exec .tag{color:var(--violet)}.lane.user .tag{color:var(--green)}.lane.maint .tag{color:var(--amber)}
+.lane h3{font-size:1.16rem;margin:8px 0 6px}.lane p{color:var(--muted);font-size:.9rem;margin:0 0 14px}
+.lane .go{font-size:.86rem;font-weight:600}
+.lane .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;margin-bottom:6px;border:1px solid var(--line2);font-size:1.2rem}
+.lane.exec .ic{background:rgba(183,155,255,.13)}.lane.user .ic{background:rgba(91,225,156,.13)}.lane.maint .ic{background:rgba(255,180,84,.13)}
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.9rem}
+th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line)}
+th{color:var(--dim);font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+tr:last-child td{border-bottom:0}td b{color:#fff}
+.note{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line2);border-left:3px solid var(--cyan);border-radius:12px;padding:14px 16px;background:rgba(10,20,38,.5);color:#cfe0f7;font-size:.9rem;margin-top:14px}
+.note .i{font-size:1.1rem;line-height:1.2}
+footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--dim);font-size:.82rem}
+.prov{margin-top:8px;color:#5e7193}.prov code{font-size:11.5px}
+.featgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
+.feat{background:linear-gradient(180deg,rgba(20,32,54,.7),rgba(12,21,38,.6));border:1px solid var(--line);border-radius:16px;padding:18px}
+.feat .fic{font-size:1.4rem;margin-bottom:8px}
+.feat h3{font-size:1.02rem;margin:0 0 6px;color:#eaf2ff}
+.feat p{margin:0;color:#b8c8e4;font-size:.9rem;line-height:1.55}
+ol.flow{list-style:none;margin:0;padding:0}
+ol.flow li{display:flex;gap:14px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+ol.flow li:last-child{border-bottom:0}
+ol.flow .fstep{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:.92rem;color:#06101f;background:linear-gradient(135deg,var(--cyan),var(--blue))}
+ol.flow .fwrap{display:flex;flex-direction:column;gap:2px}
+ol.flow .fwrap b{color:#eaf2ff;font-size:.98rem}
+ol.flow .fwrap span{color:#aebfdc;font-size:.88rem;line-height:1.5}
+table.cmdtable{width:100%;border-collapse:collapse;font-size:.86rem}
+table.cmdtable th,table.cmdtable td{text-align:left;padding:9px 12px;border:1px solid var(--line);vertical-align:top}
+table.cmdtable th{background:rgba(35,60,105,.4);color:#dbe8ff;font-weight:700}
+table.cmdtable tr:nth-child(even) td{background:rgba(255,255,255,.018)}
+table.cmdtable code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#08152b;border:1px solid var(--line);border-radius:5px;padding:.08em .38em;color:#d6e6ff;white-space:nowrap}
+@media(max-width:760px){.featgrid{grid-template-columns:1fr}}
+
+.docbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:12px 20px;margin:-30px -22px 24px;background:rgba(8,15,28,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line2)}
+.docbar a.home{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--cyan);font-size:.9rem}
+.docbar .crumb{color:var(--dim);font-size:.84rem}
+.docbar .crumb b{color:var(--text)}
+.md-body{max-width:none}
+.md-body h1{font-size:2.1rem;margin:6px 0 14px;letter-spacing:-.02em}
+.md-body h2{font-size:1.5rem;margin:30px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--line);letter-spacing:-.02em}
+.md-body h3{font-size:1.2rem;margin:22px 0 8px}
+.md-body h4{font-size:1.02rem;margin:18px 0 6px;color:#cfe0f7}
+.md-body p{color:#cdd9ee;margin:10px 0}
+.md-body ul,.md-body ol{color:#cdd9ee;padding-left:24px}
+.md-body li{margin:5px 0}
+.md-body a{color:var(--cyan)}
+.md-body strong{color:#fff}
+.md-body blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--blue);background:rgba(10,20,38,.55);border-radius:0 10px 10px 0;color:#bcd0ec}
+.md-body code{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#08152b;border:1px solid var(--line);border-radius:6px;padding:.1em .42em;color:#d6e6ff}
+.md-body pre{background:#070f1f;border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow:auto;margin:14px 0}
+.md-body pre code{background:none;border:0;padding:0;color:#d6e6ff;font-size:12.5px;line-height:1.6}
+.md-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.88rem}
+.md-body th,.md-body td{text-align:left;padding:9px 12px;border:1px solid var(--line)}
+.md-body th{background:rgba(35,60,105,.4);color:#dbe8ff;font-weight:700}
+.md-body tr:nth-child(even) td{background:rgba(255,255,255,.018)}
+.md-body hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+.md-body .mmd{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:16px;background:radial-gradient(700px 280px at 50% 0,rgba(35,60,105,.32),rgba(8,17,33,.55))}
+.md-body .mmd-scroll{overflow-x:auto;overflow-y:hidden;text-align:center}
+.md-body .mmd:not(.wide) .mmd-scroll{text-align:center}
+.md-body .mmd.wide .mmd-scroll{text-align:left}
+.md-body .mmd svg{height:auto;display:inline-block}
+.md-body .mmd-hint{font:600 11px/1.4 ui-sans-serif,system-ui;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;opacity:.8}
+.md-body .mmd-scroll::-webkit-scrollbar{height:9px}
+.md-body .mmd-scroll::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px}
+.md-body .mmd-scroll::-webkit-scrollbar-track{background:transparent}
+.md-body .codehilite{background:#070f1f;border:1px solid var(--line);border-radius:12px;margin:14px 0}
+.md-body .codehilite pre{border:0;margin:0;background:none}
+.md-footer{margin-top:42px;padding-top:18px;border-top:1px solid var(--line);color:var(--dim);font-size:.82rem}
+.md-footer code{font-size:11.5px}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="docbar">
+    <a class="home" href="../ai-usage-high-level-doc.html">⌂ ai-usage overview</a>
+    <span class="crumb">/ <b>docs/TESTS.md</b></span>
+  </div>
+  <article class="md-body">
+<h1 id="ai-usage-test-inventory">ai-usage Test Inventory</h1>
+<blockquote>
+<p>Purpose: keep the test surface auditable, generated from source, and drift-checked alongside the CLI documentation.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Owner</td>
+<td>Mike Nicks</td>
+</tr>
+<tr>
+<td>Status</td>
+<td>Generated inventory + human strategy notes</td>
+</tr>
+<tr>
+<td>Last updated</td>
+<td>2026-06-28</td>
+</tr>
+<tr>
+<td>Generator</td>
+<td><code>scripts/generate_test_inventory.py</code></td>
+</tr>
+<tr>
+<td>Runtime gate</td>
+<td><code>.venv/bin/python -m pytest tests/ -v --cov=ai_usage</code></td>
+</tr>
+</tbody>
+</table>
+<!-- BEGIN GENERATED:inventory-summary -->
+<blockquote>
+<p><strong>Current inventory:</strong> 112 test functions across 17 files (18 test classes)</p>
+</blockquote>
+<!-- END GENERATED:inventory-summary -->
+
+<h2 id="how-to-read-this-inventory">How to read this inventory</h2>
+<p>The generated count below is a static AST count of Python test functions and methods. It intentionally counts test functions, not expanded parametrized runtime cases. The full runtime suite remains the authority for pass/fail behavior.</p>
+<h2 id="verification-commands">Verification commands</h2>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code>python<span style="color: #F8F8F2"> </span>scripts/generate_test_inventory.py<span style="color: #F8F8F2"> </span>--write
+python<span style="color: #F8F8F2"> </span>scripts/generate_test_inventory.py<span style="color: #F8F8F2"> </span>--check
+.venv/bin/python<span style="color: #F8F8F2"> </span>-m<span style="color: #F8F8F2"> </span>pytest<span style="color: #F8F8F2"> </span>tests/<span style="color: #F8F8F2"> </span>-v<span style="color: #F8F8F2"> </span>--cov<span style="color: #FF4689">=</span>ai_usage
+</code></pre></div>
+
+<!-- BEGIN GENERATED:audit-run -->
+<p>Latest inventory: <strong>112 test functions</strong> across <strong>17 files</strong> and <strong>18 test classes</strong> (AST of <code>test_*</code> / <code>*_test.py</code>). Regenerate with <code>python scripts/generate_test_inventory.py --write</code>; enforce with <code>--check</code>. Counts are static test functions, not parametrized-case expansions.</p>
+<!-- END GENERATED:audit-run -->
+
+<h2 id="coverage-strategy">Coverage strategy</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Test files</th>
+<th>What the tests protect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CLI routing</td>
+<td><code>tests/test_cli.py</code></td>
+<td>Help text, provider validation, JSON/live fetch routing, history mode, and Nous auth refresh command behavior.</td>
+</tr>
+<tr>
+<td>Configuration</td>
+<td><code>tests/test_config.py</code></td>
+<td>Environment-file parsing, credential defaults, local fallback files, Exa enablement, and Hermes Codex credential-pool loading.</td>
+</tr>
+<tr>
+<td>Persistence</td>
+<td><code>tests/test_db.py</code></td>
+<td>SQLite table creation, snapshot save/query semantics, provider filtering, Codex account-qualified rows, and close idempotence.</td>
+</tr>
+<tr>
+<td>HTTP + data model</td>
+<td><code>tests/test_http.py</code>, <code>tests/test_models.py</code></td>
+<td>Retry/non-retry behavior, headers, default user agent, token totals, percentages, and normalized dictionary output.</td>
+</tr>
+<tr>
+<td>Provider adapters</td>
+<td><code>tests/test_providers/*.py</code></td>
+<td>Provider-specific auth-missing paths, successful payload normalization, API-error handling, OAuth refresh/retry behavior, and subscription quota structures.</td>
+</tr>
+<tr>
+<td>Rendering</td>
+<td><code>tests/test_render.py</code></td>
+<td>Table alignment, JSON branch separation, skip reasons, subscription quota rows, per-model output, and history rendering.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="per-file-generated-counts">Per-file generated counts</h2>
+<!-- BEGIN GENERATED:per-file-counts -->
+<table>
+<thead>
+<tr>
+<th>Test file</th>
+<th style="text-align: right;">Test functions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tests/test_cli.py</code></td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr>
+<td><code>tests/test_db.py</code></td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr>
+<td><code>tests/test_fixtures.py</code></td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr>
+<td><code>tests/test_http.py</code></td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr>
+<td><code>tests/test_models.py</code></td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_claude.py</code></td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_codex.py</code></td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_deepseek.py</code></td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_exa.py</code></td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_google.py</code></td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_nous.py</code></td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_openrouter.py</code></td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_vastai.py</code></td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_x.py</code></td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_xai.py</code></td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td style="text-align: right;">24</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td style="text-align: right;"><strong>112</strong></td>
+</tr>
+</tbody>
+</table>
+<!-- END GENERATED:per-file-counts -->
+
+<h2 id="generated-test-case-inventory">Generated test-case inventory</h2>
+<!-- BEGIN GENERATED:test-case-inventory -->
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Class</th>
+<th>Test function</th>
+<th style="text-align: right;">Line</th>
+<th>Coverage note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tests/test_cli.py</code></td>
+<td><code>TestCLI</code></td>
+<td><code>test_help_flag</code></td>
+<td style="text-align: right;">13</td>
+<td>Help flag.</td>
+</tr>
+<tr>
+<td><code>tests/test_cli.py</code></td>
+<td><code>TestCLI</code></td>
+<td><code>test_help_subcommand</code></td>
+<td style="text-align: right;">22</td>
+<td>Help subcommand.</td>
+</tr>
+<tr>
+<td><code>tests/test_cli.py</code></td>
+<td><code>TestCLI</code></td>
+<td><code>test_unknown_provider_stderr</code></td>
+<td style="text-align: right;">28</td>
+<td>Unknown provider stderr.</td>
+</tr>
+<tr>
+<td><code>tests/test_cli.py</code></td>
+<td><code>TestCLI</code></td>
+<td><code>test_refresh_auth_nous</code></td>
+<td style="text-align: right;">35</td>
+<td>Refresh auth nous.</td>
+</tr>
+<tr>
+<td><code>tests/test_cli.py</code></td>
+<td><code>TestCLI</code></td>
+<td><code>test_history_unknown_provider</code></td>
+<td style="text-align: right;">48</td>
+<td>History unknown provider.</td>
+</tr>
+<tr>
+<td><code>tests/test_cli.py</code></td>
+<td><code>TestCLI</code></td>
+<td><code>test_live_fetch_json</code></td>
+<td style="text-align: right;">56</td>
+<td>Live fetch json.</td>
+</tr>
+<tr>
+<td><code>tests/test_cli.py</code></td>
+<td><code>TestCLI</code></td>
+<td><code>test_codex_multi_account_saves_account_qualified_snapshots</code></td>
+<td style="text-align: right;">75</td>
+<td>Codex multi account saves account qualified snapshots.</td>
+</tr>
+<tr>
+<td><code>tests/test_cli.py</code></td>
+<td><code>TestCLI</code></td>
+<td><code>test_history_empty</code></td>
+<td style="text-align: right;">100</td>
+<td>History empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestReadEnvFile</code></td>
+<td><code>test_reads_simple_file</code></td>
+<td style="text-align: right;">15</td>
+<td>Reads simple file.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestReadEnvFile</code></td>
+<td><code>test_missing_file_returns_empty</code></td>
+<td style="text-align: right;">21</td>
+<td>Missing file returns empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestReadEnvFile</code></td>
+<td><code>test_ignores_comments_and_blanks</code></td>
+<td style="text-align: right;">25</td>
+<td>Ignores comments and blanks.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestCredentials</code></td>
+<td><code>test_defaults</code></td>
+<td style="text-align: right;">32</td>
+<td>Defaults.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestCredentials</code></td>
+<td><code>test_custom_values</code></td>
+<td style="text-align: right;">41</td>
+<td>Custom values.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestLoadCredentials</code></td>
+<td><code>test_loads_from_env_vars</code></td>
+<td style="text-align: right;">53</td>
+<td>Loads from env vars.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestLoadCredentials</code></td>
+<td><code>test_loads_from_env_file</code></td>
+<td style="text-align: right;">58</td>
+<td>Loads from env file.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestLoadCredentials</code></td>
+<td><code>test_missing_nous_auth_is_graceful</code></td>
+<td style="text-align: right;">83</td>
+<td>Missing nous auth is graceful.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestLoadCredentials</code></td>
+<td><code>test_loads_codex_credential_pool_from_hermes_auth</code></td>
+<td style="text-align: right;">87</td>
+<td>Loads codex credential pool from hermes auth.</td>
+</tr>
+<tr>
+<td><code>tests/test_config.py</code></td>
+<td><code>TestLoadCredentials</code></td>
+<td><code>test_vast_file_fallback</code></td>
+<td style="text-align: right;">125</td>
+<td>Vast file fallback.</td>
+</tr>
+<tr>
+<td><code>tests/test_db.py</code></td>
+<td><code>TestSnapshotDB</code></td>
+<td><code>test_creates_tables</code></td>
+<td style="text-align: right;">9</td>
+<td>Creates tables.</td>
+</tr>
+<tr>
+<td><code>tests/test_db.py</code></td>
+<td><code>TestSnapshotDB</code></td>
+<td><code>test_save_and_query</code></td>
+<td style="text-align: right;">16</td>
+<td>Save and query.</td>
+</tr>
+<tr>
+<td><code>tests/test_db.py</code></td>
+<td><code>TestSnapshotDB</code></td>
+<td><code>test_filter_by_provider</code></td>
+<td style="text-align: right;">31</td>
+<td>Filter by provider.</td>
+</tr>
+<tr>
+<td><code>tests/test_db.py</code></td>
+<td><code>TestSnapshotDB</code></td>
+<td><code>test_codex_filter_includes_account_qualified_rows</code></td>
+<td style="text-align: right;">46</td>
+<td>Codex filter includes account qualified rows.</td>
+</tr>
+<tr>
+<td><code>tests/test_db.py</code></td>
+<td><code>TestSnapshotDB</code></td>
+<td><code>test_limit</code></td>
+<td style="text-align: right;">57</td>
+<td>Limit.</td>
+</tr>
+<tr>
+<td><code>tests/test_db.py</code></td>
+<td><code>TestSnapshotDB</code></td>
+<td><code>test_all_provider_limit_uses_provider_count</code></td>
+<td style="text-align: right;">65</td>
+<td>All provider limit uses provider count.</td>
+</tr>
+<tr>
+<td><code>tests/test_db.py</code></td>
+<td><code>TestSnapshotDB</code></td>
+<td><code>test_close_is_idempotent</code></td>
+<td style="text-align: right;">73</td>
+<td>Close is idempotent.</td>
+</tr>
+<tr>
+<td><code>tests/test_fixtures.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_credentials_fixture</code></td>
+<td style="text-align: right;">6</td>
+<td>Credentials fixture provides test values.</td>
+</tr>
+<tr>
+<td><code>tests/test_fixtures.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_http_client_fixture</code></td>
+<td style="text-align: right;">14</td>
+<td>HTTP client fixture has short timeouts.</td>
+</tr>
+<tr>
+<td><code>tests/test_fixtures.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_mock_http</code></td>
+<td style="text-align: right;">22</td>
+<td>Mock HTTP client works.</td>
+</tr>
+<tr>
+<td><code>tests/test_http.py</code></td>
+<td><code>TestHttpClient</code></td>
+<td><code>test_get_json_success</code></td>
+<td style="text-align: right;">13</td>
+<td>Get json success.</td>
+</tr>
+<tr>
+<td><code>tests/test_http.py</code></td>
+<td><code>TestHttpClient</code></td>
+<td><code>test_custom_headers</code></td>
+<td style="text-align: right;">18</td>
+<td>Custom headers.</td>
+</tr>
+<tr>
+<td><code>tests/test_http.py</code></td>
+<td><code>TestHttpClient</code></td>
+<td><code>test_default_user_agent</code></td>
+<td style="text-align: right;">26</td>
+<td>Default user agent.</td>
+</tr>
+<tr>
+<td><code>tests/test_http.py</code></td>
+<td><code>TestHttpClient</code></td>
+<td><code>test_retry_config</code></td>
+<td style="text-align: right;">30</td>
+<td>Retry config.</td>
+</tr>
+<tr>
+<td><code>tests/test_models.py</code></td>
+<td><code>TestTokenData</code></td>
+<td><code>test_defaults</code></td>
+<td style="text-align: right;">11</td>
+<td>Defaults.</td>
+</tr>
+<tr>
+<td><code>tests/test_models.py</code></td>
+<td><code>TestTokenData</code></td>
+<td><code>test_total</code></td>
+<td style="text-align: right;">18</td>
+<td>Total.</td>
+</tr>
+<tr>
+<td><code>tests/test_models.py</code></td>
+<td><code>TestTokenData</code></td>
+<td><code>test_hit_pct</code></td>
+<td style="text-align: right;">22</td>
+<td>Hit pct.</td>
+</tr>
+<tr>
+<td><code>tests/test_models.py</code></td>
+<td><code>TestTokenData</code></td>
+<td><code>test_miss_pct</code></td>
+<td style="text-align: right;">26</td>
+<td>Miss pct.</td>
+</tr>
+<tr>
+<td><code>tests/test_models.py</code></td>
+<td><code>TestTokenData</code></td>
+<td><code>test_hit_pct_zero_division</code></td>
+<td style="text-align: right;">30</td>
+<td>Hit pct zero division.</td>
+</tr>
+<tr>
+<td><code>tests/test_models.py</code></td>
+<td><code>TestTokenData</code></td>
+<td><code>test_to_dict</code></td>
+<td style="text-align: right;">35</td>
+<td>To dict.</td>
+</tr>
+<tr>
+<td><code>tests/test_models.py</code></td>
+<td><code>TestProviderData</code></td>
+<td><code>test_defaults</code></td>
+<td style="text-align: right;">47</td>
+<td>Defaults.</td>
+</tr>
+<tr>
+<td><code>tests/test_models.py</code></td>
+<td><code>TestProviderData</code></td>
+<td><code>test_with_values</code></td>
+<td style="text-align: right;">53</td>
+<td>With values.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_claude.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_expired_token_refreshes_before_usage_call</code></td>
+<td style="text-align: right;">66</td>
+<td>Expired token refreshes before usage call.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_claude.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_auth_failure_refreshes_token_and_retries</code></td>
+<td style="text-align: right;">96</td>
+<td>Auth failure refreshes token and retries.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_claude.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_plan_type_falls_back_to_local_organization_type</code></td>
+<td style="text-align: right;">130</td>
+<td>Plan type falls back to local organization type.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_claude.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_local_plan_type_ignores_billing_transport_label</code></td>
+<td style="text-align: right;">150</td>
+<td>Local plan type ignores billing transport label.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_claude.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_refresh_failure_is_reported_without_raising</code></td>
+<td style="text-align: right;">169</td>
+<td>Refresh failure is reported without raising.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_codex.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_fetches_all_hermes_codex_accounts</code></td>
+<td style="text-align: right;">114</td>
+<td>Fetches all hermes codex accounts.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_codex.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_hermes_codex_account_failure_does_not_hide_other_accounts</code></td>
+<td style="text-align: right;">148</td>
+<td>Hermes codex account failure does not hide other accounts.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_codex.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_rpc_auth_error_is_reported_not_silent_when_relogin_unavailable</code></td>
+<td style="text-align: right;">168</td>
+<td>Rpc auth error is reported not silent when relogin unavailable.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_codex.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_rpc_auth_error_runs_codex_login_and_retries</code></td>
+<td style="text-align: right;">184</td>
+<td>Rpc auth error runs codex login and retries.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_codex.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_missing_codex_cli_is_reported_not_silent</code></td>
+<td style="text-align: right;">214</td>
+<td>Missing codex cli is reported not silent.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_deepseek.py</code></td>
+<td><code>TestDeepSeekProvider</code></td>
+<td><code>test_no_credentials_returns_empty</code></td>
+<td style="text-align: right;">9</td>
+<td>No credentials returns empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_deepseek.py</code></td>
+<td><code>TestDeepSeekProvider</code></td>
+<td><code>test_balance_success</code></td>
+<td style="text-align: right;">18</td>
+<td>Balance success.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_deepseek.py</code></td>
+<td><code>TestDeepSeekProvider</code></td>
+<td><code>test_balance_api_error_graceful</code></td>
+<td style="text-align: right;">26</td>
+<td>Balance api error graceful.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_deepseek.py</code></td>
+<td><code>TestDeepSeekProvider</code></td>
+<td><code>test_token_usage_success</code></td>
+<td style="text-align: right;">33</td>
+<td>Token usage success.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_deepseek.py</code></td>
+<td><code>TestDeepSeekProvider</code></td>
+<td><code>test_usage_error_graceful</code></td>
+<td style="text-align: right;">63</td>
+<td>Usage error graceful.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_deepseek.py</code></td>
+<td><code>TestDeepSeekProvider</code></td>
+<td><code>test_models_parsed</code></td>
+<td style="text-align: right;">74</td>
+<td>Models parsed.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_exa.py</code></td>
+<td><code>TestExaProvider</code></td>
+<td><code>test_disabled_reports_skip_reason</code></td>
+<td style="text-align: right;">9</td>
+<td>Disabled reports skip reason.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_exa.py</code></td>
+<td><code>TestExaProvider</code></td>
+<td><code>test_no_credentials_returns_empty</code></td>
+<td style="text-align: right;">18</td>
+<td>No credentials returns empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_exa.py</code></td>
+<td><code>TestExaProvider</code></td>
+<td><code>test_balance_via_session</code></td>
+<td style="text-align: right;">26</td>
+<td>Balance via session.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_exa.py</code></td>
+<td><code>TestExaProvider</code></td>
+<td><code>test_spend_via_service_key</code></td>
+<td style="text-align: right;">32</td>
+<td>Spend via service key.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_exa.py</code></td>
+<td><code>TestExaProvider</code></td>
+<td><code>test_key_discovery_failure</code></td>
+<td style="text-align: right;">43</td>
+<td>Key discovery failure.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_google.py</code></td>
+<td><code>TestGoogleProvider</code></td>
+<td><code>test_no_auth_file_returns_empty</code></td>
+<td style="text-align: right;">18</td>
+<td>No auth file returns empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_google.py</code></td>
+<td><code>TestGoogleProvider</code></td>
+<td><code>test_refresh_token_needed_and_success</code></td>
+<td style="text-align: right;">27</td>
+<td>Refresh token needed and success.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_google.py</code></td>
+<td><code>TestGoogleProvider</code></td>
+<td><code>test_auth_failure_refreshes_and_retries</code></td>
+<td style="text-align: right;">99</td>
+<td>Auth failure refreshes and retries.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_google.py</code></td>
+<td><code>TestGoogleProvider</code></td>
+<td><code>test_missing_remaining_fraction_is_zero</code></td>
+<td style="text-align: right;">156</td>
+<td>When remainingFraction is absent from quotaInfo, quota is exhausted (0%).</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_google.py</code></td>
+<td><code>TestGoogleProvider</code></td>
+<td><code>test_api_error_graceful</code></td>
+<td style="text-align: right;">203</td>
+<td>Api error graceful.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_nous.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_missing_nous_token_reports_auth_missing</code></td>
+<td style="text-align: right;">49</td>
+<td>Missing nous token reports auth missing.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_nous.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_missing_access_token_refreshes_from_refresh_token</code></td>
+<td style="text-align: right;">63</td>
+<td>Missing access token refreshes from refresh token.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_nous.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_rejected_token_refreshes_and_retries</code></td>
+<td style="text-align: right;">100</td>
+<td>Rejected token refreshes and retries.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_nous.py</code></td>
+<td><code>(module)</code></td>
+<td><code>test_fetch_reports_total_usable_and_credit_breakdown</code></td>
+<td style="text-align: right;">138</td>
+<td>Fetch reports total usable and credit breakdown.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_openrouter.py</code></td>
+<td><code>TestOpenRouterProvider</code></td>
+<td><code>test_no_key_returns_empty</code></td>
+<td style="text-align: right;">9</td>
+<td>No key returns empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_openrouter.py</code></td>
+<td><code>TestOpenRouterProvider</code></td>
+<td><code>test_balance_and_monthly_usage_success</code></td>
+<td style="text-align: right;">16</td>
+<td>Balance and monthly usage success.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_openrouter.py</code></td>
+<td><code>TestOpenRouterProvider</code></td>
+<td><code>test_balance_error_still_fetches_usage</code></td>
+<td style="text-align: right;">30</td>
+<td>Balance error still fetches usage.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_openrouter.py</code></td>
+<td><code>TestOpenRouterProvider</code></td>
+<td><code>test_usage_error_keeps_balance</code></td>
+<td style="text-align: right;">41</td>
+<td>Usage error keeps balance.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_vastai.py</code></td>
+<td><code>TestVastAIProvider</code></td>
+<td><code>test_no_key_returns_empty</code></td>
+<td style="text-align: right;">9</td>
+<td>No key returns empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_vastai.py</code></td>
+<td><code>TestVastAIProvider</code></td>
+<td><code>test_balance_success</code></td>
+<td style="text-align: right;">15</td>
+<td>Balance success.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_vastai.py</code></td>
+<td><code>TestVastAIProvider</code></td>
+<td><code>test_spend_success</code></td>
+<td style="text-align: right;">24</td>
+<td>Spend success.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_vastai.py</code></td>
+<td><code>TestVastAIProvider</code></td>
+<td><code>test_balance_error_graceful</code></td>
+<td style="text-align: right;">34</td>
+<td>Balance error graceful.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_x.py</code></td>
+<td><code>TestXProvider</code></td>
+<td><code>test_no_credentials_returns_empty</code></td>
+<td style="text-align: right;">9</td>
+<td>No credentials returns empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_x.py</code></td>
+<td><code>TestXProvider</code></td>
+<td><code>test_balance_success</code></td>
+<td style="text-align: right;">15</td>
+<td>Balance success.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_x.py</code></td>
+<td><code>TestXProvider</code></td>
+<td><code>test_spend_with_pricing</code></td>
+<td style="text-align: right;">25</td>
+<td>Spend with pricing.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_x.py</code></td>
+<td><code>TestXProvider</code></td>
+<td><code>test_skips_total_group</code></td>
+<td style="text-align: right;">45</td>
+<td>Skips total group.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_x.py</code></td>
+<td><code>TestXProvider</code></td>
+<td><code>test_api_error_graceful</code></td>
+<td style="text-align: right;">60</td>
+<td>Api error graceful.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_xai.py</code></td>
+<td><code>TestXAIProvider</code></td>
+<td><code>test_no_credentials_returns_empty</code></td>
+<td style="text-align: right;">9</td>
+<td>No credentials returns empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_xai.py</code></td>
+<td><code>TestXAIProvider</code></td>
+<td><code>test_balance_success</code></td>
+<td style="text-align: right;">16</td>
+<td>Balance success.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_xai.py</code></td>
+<td><code>TestXAIProvider</code></td>
+<td><code>test_balance_negative_becomes_positive</code></td>
+<td style="text-align: right;">25</td>
+<td>Balance negative becomes positive.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_xai.py</code></td>
+<td><code>TestXAIProvider</code></td>
+<td><code>test_token_and_spend</code></td>
+<td style="text-align: right;">34</td>
+<td>Token and spend.</td>
+</tr>
+<tr>
+<td><code>tests/test_providers/test_xai.py</code></td>
+<td><code>TestXAIProvider</code></td>
+<td><code>test_api_error_graceful</code></td>
+<td style="text-align: right;">56</td>
+<td>Api error graceful.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestFormatting</code></td>
+<td><code>test_fmt_amt_none</code></td>
+<td style="text-align: right;">19</td>
+<td>Fmt amt none.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestFormatting</code></td>
+<td><code>test_fmt_amt_value</code></td>
+<td style="text-align: right;">22</td>
+<td>Fmt amt value.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestFormatting</code></td>
+<td><code>test_fmt_tok_zero</code></td>
+<td style="text-align: right;">25</td>
+<td>Fmt tok zero.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestFormatting</code></td>
+<td><code>test_fmt_tok_value</code></td>
+<td style="text-align: right;">28</td>
+<td>Fmt tok value.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestFormatting</code></td>
+<td><code>test_fmt_countdown_none</code></td>
+<td style="text-align: right;">31</td>
+<td>Fmt countdown none.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderJson</code></td>
+<td><code>test_empty</code></td>
+<td style="text-align: right;">36</td>
+<td>Empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderJson</code></td>
+<td><code>test_deepseek</code></td>
+<td style="text-align: right;">40</td>
+<td>Deepseek.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderJson</code></td>
+<td><code>test_codex</code></td>
+<td style="text-align: right;">52</td>
+<td>Codex.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderJson</code></td>
+<td><code>test_codex_multi_account_json</code></td>
+<td style="text-align: right;">65</td>
+<td>Codex multi account json.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderJson</code></td>
+<td><code>test_models_flag</code></td>
+<td style="text-align: right;">80</td>
+<td>Models flag.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderJson</code></td>
+<td><code>test_nous</code></td>
+<td style="text-align: right;">91</td>
+<td>Nous.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderJson</code></td>
+<td><code>test_skip_reason_json</code></td>
+<td style="text-align: right;">117</td>
+<td>Skip reason json.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_empty</code></td>
+<td style="text-align: right;">133</td>
+<td>Empty.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_deepseek_row</code></td>
+<td style="text-align: right;">137</td>
+<td>Deepseek row.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_skip_reason_table</code></td>
+<td style="text-align: right;">148</td>
+<td>Skip reason table.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_nous_table_reports_total_balance_and_period_spend</code></td>
+<td style="text-align: right;">158</td>
+<td>Nous table reports total balance and period spend.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_codex_detail_section</code></td>
+<td style="text-align: right;">176</td>
+<td>Codex detail section.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_codex_multi_account_detail_section</code></td>
+<td style="text-align: right;">191</td>
+<td>Codex multi account detail section.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_codex_auth_failure_fallback_is_visible</code></td>
+<td style="text-align: right;">212</td>
+<td>Codex auth failure fallback is visible.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_claude_detail_section</code></td>
+<td style="text-align: right;">223</td>
+<td>Claude detail section.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_claude_auth_failure_fallback_is_not_misleading_403</code></td>
+<td style="text-align: right;">235</td>
+<td>Claude auth failure fallback is not misleading 403.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_google_quota_rows_use_entitlement_tier_not_model_heuristic</code></td>
+<td style="text-align: right;">245</td>
+<td>Google quota rows use entitlement tier not model heuristic.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_google_json_includes_plan_source_and_quota_source</code></td>
+<td style="text-align: right;">271</td>
+<td>Google json includes plan source and quota source.</td>
+</tr>
+<tr>
+<td><code>tests/test_render.py</code></td>
+<td><code>TestRenderTable</code></td>
+<td><code>test_models_section</code></td>
+<td style="text-align: right;">292</td>
+<td>Models section.</td>
+</tr>
+</tbody>
+</table>
+<!-- END GENERATED:test-case-inventory -->
+  </article>
+  <div class="md-footer">
+    Rendered from <code>docs/TESTS.md</code> — the Markdown file is the canonical,
+    version-controlled source. This HTML is generated (regenerate with
+    <code>scripts/render_docs.py</code>); do not hand-edit.
+  </div>
+</div>
+</body>
+</html>

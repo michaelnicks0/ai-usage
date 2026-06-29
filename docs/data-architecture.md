@@ -5,7 +5,8 @@
 | Status | Active local workstation utility |
 | Source of truth | Markdown and Mermaid in this file |
 | Normalized model | `ProviderData` and `TokenData` in `src/ai_usage/models.py` |
-| Legacy rendered companion | `data-architecture.html` |
+| Generated HTML companion | `docs/data-architecture.html` from `scripts/render_docs.py` |
+| Legacy root render | `data-architecture.html` |
 
 ## Overview
 
@@ -95,5 +96,5 @@ Codex multi-account live fetches save history rows under provider keys such as `
 ## Documentation rules
 
 - Keep this Markdown document synchronized with provider endpoint and normalized-field changes.
-- Treat `architecture.html` and `data-architecture.html` as legacy rendered references unless they are explicitly regenerated from canonical Markdown.
+- Treat root-level `architecture.html` and `data-architecture.html` as legacy rendered references. Regenerate same-path `docs/*.html` companions from canonical Markdown with `scripts/render_docs.py`.
 - Never document real credential values; use environment-variable names and `[REDACTED]` placeholders only.

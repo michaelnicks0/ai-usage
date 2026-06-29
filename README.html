@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Readme — ai-usage</title>
+<style>
+:root{--bg:#060d18;--bg2:#0a1426;--panel:#0e1a30;--card:#111f38;--line:#21324f;--line2:#2c4060;--text:#eaf2ff;--muted:#9fb1cc;--dim:#6f82a0;--blue:#5aa6ff;--blue2:#3b82f6;--cyan:#52d4ff;--green:#5be19c;--amber:#ffb454;--rose:#ff6f9c;--violet:#b79bff;--ink:#04122a}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;color:var(--text);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,ui-sans-serif,system-ui,sans-serif;background:radial-gradient(1100px 520px at 78% -8%,rgba(59,130,246,.22),transparent 60%),radial-gradient(820px 480px at 6% 4%,rgba(82,212,255,.12),transparent 55%),radial-gradient(700px 700px at 92% 96%,rgba(91,225,156,.08),transparent 55%),var(--bg);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:30px 22px 70px}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+code{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#08152b;border:1px solid var(--line);border-radius:6px;padding:.1em .42em;color:#d6e6ff}
+h1,h2,h3{letter-spacing:-.02em;margin:0}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;color:var(--cyan);font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-size:.72rem}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 16px 2px rgba(82,212,255,.85);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
+.hero{position:relative;border:1px solid var(--line2);border-radius:26px;padding:38px 36px 30px;margin-bottom:18px;background:linear-gradient(165deg,rgba(31,52,92,.55),rgba(10,20,38,.7));box-shadow:0 30px 90px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.05);overflow:hidden}
+.hero h1{font-size:clamp(2.3rem,5.2vw,3.9rem);line-height:1.02;margin:14px 0 12px}
+.hero h1 .g{background:linear-gradient(92deg,var(--cyan),var(--blue) 55%,var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lead{color:#cfe0f7;font-size:1.12rem;max-width:62ch;margin:0 0 8px}
+.hero .sub{color:var(--muted);max-width:64ch}
+.pillbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pill{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:#dce8fb;background:rgba(11,22,42,.7);border:1px solid var(--line2);border-radius:999px;padding:7px 13px}
+.pill b{color:#fff}.pill .k{width:7px;height:7px;border-radius:50%}
+.k.live{background:var(--amber)}.k.local{background:var(--green)}.k.priv{background:var(--rose)}.k.blue{background:var(--blue)}
+.metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:18px 0 6px}
+.metric{background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:16px;padding:15px 14px;text-align:center}
+.metric .n{font-size:1.85rem;font-weight:800;letter-spacing:-.03em;background:linear-gradient(180deg,#fff,#bcd2f2);-webkit-background-clip:text;background-clip:text;color:transparent}
+.metric .l{display:block;color:var(--dim);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+@media(max-width:880px){.metrics{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.metrics{grid-template-columns:repeat(2,1fr)}}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 26px}
+.toc a{font-size:.84rem;color:#cfe0f7;border:1px solid var(--line2);background:rgba(10,20,38,.6);border-radius:999px;padding:8px 14px}
+.toc a:hover{border-color:var(--cyan);text-decoration:none;color:#fff}
+section.block{margin:30px 0}
+.block>h2{font-size:1.5rem;margin-bottom:6px;display:flex;align-items:center;gap:11px}
+.block>h2 .num{font-size:.8rem;color:var(--ink);background:linear-gradient(180deg,var(--cyan),var(--blue));width:26px;height:26px;border-radius:8px;display:inline-grid;place-items:center;font-weight:800}
+.block>p.intro{color:var(--muted);max-width:74ch;margin:6px 0 16px}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.3)}
+.figure{border:1px solid var(--line);border-radius:20px;background:radial-gradient(700px 300px at 50% 0,rgba(35,60,105,.4),rgba(8,17,33,.6));padding:24px;overflow:hidden}
+.figure svg{display:block;width:100%;height:auto}
+.cap{color:var(--dim);font-size:.82rem;text-align:center;margin-top:12px}
+.lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:820px){.lanes{grid-template-columns:1fr}}
+.lane{position:relative;border:1px solid var(--line2);border-radius:18px;padding:20px;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01));transition:transform .15s ease,border-color .15s ease}
+.lane:hover{transform:translateY(-3px);border-color:var(--cyan)}
+.lane .tag{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.lane.exec .tag{color:var(--violet)}.lane.user .tag{color:var(--green)}.lane.maint .tag{color:var(--amber)}
+.lane h3{font-size:1.16rem;margin:8px 0 6px}.lane p{color:var(--muted);font-size:.9rem;margin:0 0 14px}
+.lane .go{font-size:.86rem;font-weight:600}
+.lane .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;margin-bottom:6px;border:1px solid var(--line2);font-size:1.2rem}
+.lane.exec .ic{background:rgba(183,155,255,.13)}.lane.user .ic{background:rgba(91,225,156,.13)}.lane.maint .ic{background:rgba(255,180,84,.13)}
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.9rem}
+th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line)}
+th{color:var(--dim);font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+tr:last-child td{border-bottom:0}td b{color:#fff}
+.note{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line2);border-left:3px solid var(--cyan);border-radius:12px;padding:14px 16px;background:rgba(10,20,38,.5);color:#cfe0f7;font-size:.9rem;margin-top:14px}
+.note .i{font-size:1.1rem;line-height:1.2}
+footer{margin-top:40px;padding-top:20px;border-top:1px solid var(--line);color:var(--dim);font-size:.82rem}
+.prov{margin-top:8px;color:#5e7193}.prov code{font-size:11.5px}
+.featgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px}
+.feat{background:linear-gradient(180deg,rgba(20,32,54,.7),rgba(12,21,38,.6));border:1px solid var(--line);border-radius:16px;padding:18px}
+.feat .fic{font-size:1.4rem;margin-bottom:8px}
+.feat h3{font-size:1.02rem;margin:0 0 6px;color:#eaf2ff}
+.feat p{margin:0;color:#b8c8e4;font-size:.9rem;line-height:1.55}
+ol.flow{list-style:none;margin:0;padding:0}
+ol.flow li{display:flex;gap:14px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+ol.flow li:last-child{border-bottom:0}
+ol.flow .fstep{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:.92rem;color:#06101f;background:linear-gradient(135deg,var(--cyan),var(--blue))}
+ol.flow .fwrap{display:flex;flex-direction:column;gap:2px}
+ol.flow .fwrap b{color:#eaf2ff;font-size:.98rem}
+ol.flow .fwrap span{color:#aebfdc;font-size:.88rem;line-height:1.5}
+table.cmdtable{width:100%;border-collapse:collapse;font-size:.86rem}
+table.cmdtable th,table.cmdtable td{text-align:left;padding:9px 12px;border:1px solid var(--line);vertical-align:top}
+table.cmdtable th{background:rgba(35,60,105,.4);color:#dbe8ff;font-weight:700}
+table.cmdtable tr:nth-child(even) td{background:rgba(255,255,255,.018)}
+table.cmdtable code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#08152b;border:1px solid var(--line);border-radius:5px;padding:.08em .38em;color:#d6e6ff;white-space:nowrap}
+@media(max-width:760px){.featgrid{grid-template-columns:1fr}}
+
+.docbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:14px;padding:12px 20px;margin:-30px -22px 24px;background:rgba(8,15,28,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line2)}
+.docbar a.home{display:inline-flex;align-items:center;gap:8px;font-weight:700;color:var(--cyan);font-size:.9rem}
+.docbar .crumb{color:var(--dim);font-size:.84rem}
+.docbar .crumb b{color:var(--text)}
+.md-body{max-width:none}
+.md-body h1{font-size:2.1rem;margin:6px 0 14px;letter-spacing:-.02em}
+.md-body h2{font-size:1.5rem;margin:30px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--line);letter-spacing:-.02em}
+.md-body h3{font-size:1.2rem;margin:22px 0 8px}
+.md-body h4{font-size:1.02rem;margin:18px 0 6px;color:#cfe0f7}
+.md-body p{color:#cdd9ee;margin:10px 0}
+.md-body ul,.md-body ol{color:#cdd9ee;padding-left:24px}
+.md-body li{margin:5px 0}
+.md-body a{color:var(--cyan)}
+.md-body strong{color:#fff}
+.md-body blockquote{margin:14px 0;padding:10px 16px;border-left:3px solid var(--blue);background:rgba(10,20,38,.55);border-radius:0 10px 10px 0;color:#bcd0ec}
+.md-body code{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#08152b;border:1px solid var(--line);border-radius:6px;padding:.1em .42em;color:#d6e6ff}
+.md-body pre{background:#070f1f;border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow:auto;margin:14px 0}
+.md-body pre code{background:none;border:0;padding:0;color:#d6e6ff;font-size:12.5px;line-height:1.6}
+.md-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.88rem}
+.md-body th,.md-body td{text-align:left;padding:9px 12px;border:1px solid var(--line)}
+.md-body th{background:rgba(35,60,105,.4);color:#dbe8ff;font-weight:700}
+.md-body tr:nth-child(even) td{background:rgba(255,255,255,.018)}
+.md-body hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+.md-body .mmd{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:16px;background:radial-gradient(700px 280px at 50% 0,rgba(35,60,105,.32),rgba(8,17,33,.55))}
+.md-body .mmd-scroll{overflow-x:auto;overflow-y:hidden;text-align:center}
+.md-body .mmd:not(.wide) .mmd-scroll{text-align:center}
+.md-body .mmd.wide .mmd-scroll{text-align:left}
+.md-body .mmd svg{height:auto;display:inline-block}
+.md-body .mmd-hint{font:600 11px/1.4 ui-sans-serif,system-ui;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;opacity:.8}
+.md-body .mmd-scroll::-webkit-scrollbar{height:9px}
+.md-body .mmd-scroll::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px}
+.md-body .mmd-scroll::-webkit-scrollbar-track{background:transparent}
+.md-body .codehilite{background:#070f1f;border:1px solid var(--line);border-radius:12px;margin:14px 0}
+.md-body .codehilite pre{border:0;margin:0;background:none}
+.md-footer{margin-top:42px;padding-top:18px;border-top:1px solid var(--line);color:var(--dim);font-size:.82rem}
+.md-footer code{font-size:11.5px}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="docbar">
+    <a class="home" href="ai-usage-high-level-doc.html">⌂ ai-usage overview</a>
+    <span class="crumb">/ <b>README.md</b></span>
+  </div>
+  <article class="md-body">
+<h1 id="ai-usage">ai-usage</h1>
+<p>Cross-provider balance, spend, subscription quota, and token usage — one command.</p>
+<h2 id="status">Status</h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Runtime</td>
+<td>Python CLI, <code>ai_usage.cli:main</code></td>
+</tr>
+<tr>
+<td>Package root</td>
+<td><code>src/ai_usage/</code></td>
+</tr>
+<tr>
+<td>High-level front door</td>
+<td><a href="ai-usage-high-level-doc.html"><code>ai-usage-high-level-doc.html</code></a></td>
+</tr>
+<tr>
+<td>Documentation map</td>
+<td><a href="docs/README.html"><code>docs/README.md</code></a> · <a href="docs/README.html"><code>docs/README.html</code></a></td>
+</tr>
+<tr>
+<td>Canonical architecture docs</td>
+<td>C4 model: <a href="docs/architecture/workspace.dsl"><code>docs/architecture/workspace.dsl</code></a>; source-level docs: <a href="docs/architecture.html"><code>docs/architecture.md</code></a>, <a href="docs/data-architecture.html"><code>docs/data-architecture.md</code></a></td>
+</tr>
+<tr>
+<td>Generated HTML companions</td>
+<td><a href="README.html"><code>README.html</code></a>, <code>docs/*.html</code>, plus legacy root renders <a href="architecture.html"><code>architecture.html</code></a>, <a href="data-architecture.html"><code>data-architecture.html</code></a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="architecture-map">Architecture map</h3>
+<figure class="mmd"><div class="mmd-scroll"><svg width="550" height="975" id="my-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="background-color:transparent" viewBox="-13 -19.25 549.546875 975.25" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#my-svg{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;fill:#eaf2ff;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#my-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#my-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#my-svg .error-icon{fill:#ff6f9c;}#my-svg .error-text{fill:#eaf2ff;stroke:#eaf2ff;}#my-svg .edge-thickness-normal{stroke-width:1px;}#my-svg .edge-thickness-thick{stroke-width:3.5px;}#my-svg .edge-pattern-solid{stroke-dasharray:0;}#my-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#my-svg .edge-pattern-dashed{stroke-dasharray:3;}#my-svg .edge-pattern-dotted{stroke-dasharray:2;}#my-svg .marker{fill:#6cb4ff;stroke:#6cb4ff;}#my-svg .marker.cross{stroke:#6cb4ff;}#my-svg svg{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;}#my-svg p{margin:0;}#my-svg .label{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#eaf2ff;}#my-svg .cluster-label text{fill:#9fb1cc;}#my-svg .cluster-label span{color:#9fb1cc;}#my-svg .cluster-label span p{background-color:transparent;}#my-svg .label text,#my-svg span{fill:#eaf2ff;color:#eaf2ff;}#my-svg .node rect,#my-svg .node circle,#my-svg .node ellipse,#my-svg .node polygon,#my-svg .node path{fill:#16264a;stroke:#6cb4ff;stroke-width:1px;}#my-svg .rough-node .label text,#my-svg .node .label text,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-anchor:middle;}#my-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#my-svg .rough-node .label,#my-svg .node .label,#my-svg .image-shape .label,#my-svg .icon-shape .label{text-align:center;}#my-svg .node.clickable{cursor:pointer;}#my-svg .root .anchor path{fill:#6cb4ff!important;stroke-width:0;stroke:#6cb4ff;}#my-svg .arrowheadPath{fill:#f9f2e7;}#my-svg .edgePath .path{stroke:#6cb4ff;stroke-width:1px;}#my-svg .flowchart-link{stroke:#6cb4ff;fill:none;}#my-svg .edgeLabel{background-color:#0a1426;text-align:center;}#my-svg .edgeLabel p{background-color:#0a1426;}#my-svg .edgeLabel rect{opacity:1;background-color:#0e1a30;fill:#0e1a30;}#my-svg .labelBkg{background-color:#0e1a30;}#my-svg .cluster rect{fill:rgba(20,32,54,0.65);stroke:#2c4060;stroke-width:1px;}#my-svg .cluster text{fill:#9fb1cc;}#my-svg .cluster span{color:#9fb1cc;}#my-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:12px;background:#0a1426;border:1px solid #21324f;border-radius:2px;pointer-events:none;z-index:100;}#my-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#eaf2ff;}#my-svg rect.text{fill:none;stroke-width:0;}#my-svg .icon-shape,#my-svg .image-shape{background-color:#0a1426;text-align:center;}#my-svg .icon-shape p,#my-svg .image-shape p{background-color:#0a1426;padding:2px;}#my-svg .icon-shape .label rect,#my-svg .image-shape .label rect{opacity:1;background-color:#0e1a30;fill:#0e1a30;}#my-svg .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#my-svg .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#my-svg .node .neo-node{stroke:#6cb4ff;}#my-svg [data-look="neo"].node rect,#my-svg [data-look="neo"].cluster rect,#my-svg [data-look="neo"].node polygon{stroke:url(#my-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg [data-look="neo"].node path{stroke:url(#my-svg-gradient);stroke-width:1px;}#my-svg [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg [data-look="neo"].node .neo-line path{stroke:#6cb4ff;filter:none;}#my-svg [data-look="neo"].node circle{stroke:url(#my-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg [data-look="neo"].node circle .state-start{fill:#000000;}#my-svg [data-look="neo"].icon-shape .icon{fill:url(#my-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg [data-look="neo"].icon-shape .icon-neo path{stroke:url(#my-svg-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#my-svg .cluster rect{fill:rgba(20, 32, 54, 0.65)!important;stroke:rgb(44, 64, 96)!important;}#my-svg .edgeLabel,#my-svg .edgeLabel p{background:rgb(10, 20, 38)!important;color:rgb(234, 242, 255)!important;fill:rgb(10, 20, 38)!important;padding:1px 5px!important;border-radius:5px!important;}#my-svg .edgeLabel rect,#my-svg .edgeLabel .label-container{fill:rgb(10, 20, 38)!important;}#my-svg .edgePath .path{stroke:rgb(108, 180, 255)!important;}#my-svg .flowchart-link{stroke:rgb(108, 180, 255)!important;}#my-svg .marker{fill:rgb(108, 180, 255)!important;stroke:rgb(108, 180, 255)!important;}#my-svg text,#my-svg .nodeLabel,#my-svg .label{fill:rgb(234, 242, 255)!important;color:rgb(234, 242, 255)!important;}#my-svg .node rect,#my-svg .node polygon,#my-svg .node circle,#my-svg .node path{stroke:rgb(108, 180, 255)!important;stroke-width:1.5px!important;}#my-svg :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="my-svg_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-pointEnd-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="11.5" refY="7" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="14" orient="auto"><path d="M 0 0 L 11.5 7 L 0 14 z" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-pointStart-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="1" refY="7" markerUnits="userSpaceOnUse" markerWidth="11.5" markerHeight="14" orient="auto"><polygon points="0,7 11.5,14 11.5,0" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleEnd-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refY="5" refX="12.25" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-circleStart-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-2" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="my-svg_flowchart-v2-crossEnd-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="17.7" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5;"/></marker><marker id="my-svg_flowchart-v2-crossStart-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="-3.5" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5; stroke-dasharray: 1, 0;"/></marker><g class="root"><g class="clusters"/><g class="edgePaths"><path d="M258.684,58.5L258.684,65.708C258.684,72.917,258.684,87.333,258.684,101.083C258.684,114.833,258.684,127.917,258.684,134.458L258.684,141" id="my-svg-L_command_config_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_command_config_0" data-points="W3sieCI6MjU4LjY4MzU5Mzc1LCJ5Ijo1OC41fSx7IngiOjI1OC42ODM1OTM3NSwieSI6MTAxLjc1fSx7IngiOjI1OC42ODM1OTM3NSwieSI6MTQ1fV0=" data-look="classic" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M258.684,218L258.684,225.208C258.684,232.417,258.684,246.833,258.684,260.583C258.684,274.333,258.684,287.417,258.684,293.958L258.684,300.5" id="my-svg-L_config_selection_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_config_selection_0" data-points="W3sieCI6MjU4LjY4MzU5Mzc1LCJ5IjoyMTh9LHsieCI6MjU4LjY4MzU5Mzc1LCJ5IjoyNjEuMjV9LHsieCI6MjU4LjY4MzU5Mzc1LCJ5IjozMDQuNX1d" data-look="classic" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M258.684,377.5L258.684,384.708C258.684,391.917,258.684,406.333,258.684,420.083C258.684,433.833,258.684,446.917,258.684,453.458L258.684,460" id="my-svg-L_selection_fetch_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_selection_fetch_0" data-points="W3sieCI6MjU4LjY4MzU5Mzc1LCJ5IjozNzcuNX0seyJ4IjoyNTguNjgzNTkzNzUsInkiOjQyMC43NX0seyJ4IjoyNTguNjgzNTkzNzUsInkiOjQ2NH1d" data-look="classic" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M258.684,537L258.684,544.208C258.684,551.417,258.684,565.833,258.684,579.583C258.684,593.333,258.684,606.417,258.684,612.958L258.684,619.5" id="my-svg-L_fetch_normalize_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_fetch_normalize_0" data-points="W3sieCI6MjU4LjY4MzU5Mzc1LCJ5Ijo1Mzd9LHsieCI6MjU4LjY4MzU5Mzc1LCJ5Ijo1ODAuMjV9LHsieCI6MjU4LjY4MzU5Mzc1LCJ5Ijo2MjMuNX1d" data-look="classic" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M205.184,674L189.911,681.208C174.638,688.417,144.093,702.833,128.82,716.583C113.547,730.333,113.547,743.417,113.547,749.958L113.547,756.5" id="my-svg-L_normalize_persist_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_normalize_persist_0" data-points="W3sieCI6MjA1LjE4NDI5MjMxMjk1NjIsInkiOjY3NH0seyJ4IjoxMTMuNTQ2ODc1LCJ5Ijo3MTcuMjV9LHsieCI6MTEzLjU0Njg3NSwieSI6NzYwLjV9XQ==" data-look="classic" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M312.183,674L327.456,681.208C342.729,688.417,373.275,702.833,388.547,716.583C403.82,730.333,403.82,743.417,403.82,749.958L403.82,756.5" id="my-svg-L_normalize_render_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_normalize_render_0" data-points="W3sieCI6MzEyLjE4Mjg5NTE4NzA0MzgsInkiOjY3NH0seyJ4Ijo0MDMuODIwMzEyNSwieSI6NzE3LjI1fSx7IngiOjQwMy44MjAzMTI1LCJ5Ijo3NjAuNX1d" data-look="classic" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/><path d="M113.547,811L113.547,818.208C113.547,825.417,113.547,839.833,113.547,853.583C113.547,867.333,113.547,880.417,113.547,886.958L113.547,893.5" id="my-svg-L_persist_history_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="L_persist_history_0" data-points="W3sieCI6MTEzLjU0Njg3NSwieSI6ODExfSx7IngiOjExMy41NDY4NzUsInkiOjg1NC4yNX0seyJ4IjoxMTMuNTQ2ODc1LCJ5Ijo4OTcuNX1d" data-look="classic" marker-end="url(#my-svg_flowchart-v2-pointEnd)"/></g><g class="edgeLabels"></g><g class="nodes"><g class="node default" id="my-svg-flowchart-command-0" data-look="classic" transform="translate(258.68359375, 33.25)"><rect class="basic label-container" style="" x="-105.5390625" y="-25.25" width="211.078125" height="50.5"/><g class="label" style="" transform="translate(-77.5390625, -11.25)"><rect/><foreignObject width="155.078125" height="22.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>ai-usage CLI command</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-config-1" data-look="classic" transform="translate(258.68359375, 181.5)"><rect class="basic label-container" style="" x="-128" y="-36.5" width="256" height="73"/><g class="label" style="" transform="translate(-100, -22.5)"><rect/><foreignObject width="200" height="45"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p>Load env and local OAuth credentials</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-selection-3" data-look="classic" transform="translate(258.68359375, 341)"><rect class="basic label-container" style="" x="-128" y="-36.5" width="256" height="73"/><g class="label" style="" transform="translate(-100, -22.5)"><rect/><foreignObject width="200" height="45"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p>Select all, one, or multiple providers</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-fetch-5" data-look="classic" transform="translate(258.68359375, 500.5)"><rect class="basic label-container" style="" x="-128" y="-36.5" width="256" height="73"/><g class="label" style="" transform="translate(-100, -22.5)"><rect/><foreignObject width="200" height="45"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p>Fetch provider balances, spend, quotas, and tokens</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-normalize-7" data-look="classic" transform="translate(258.68359375, 648.75)"><rect class="basic label-container" style="" x="-115.1171875" y="-25.25" width="230.234375" height="50.5"/><g class="label" style="" transform="translate(-87.1171875, -11.25)"><rect/><foreignObject width="174.234375" height="22.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Normalize provider results</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-persist-9" data-look="classic" transform="translate(113.546875, 785.75)"><rect class="basic label-container" style="" x="-105.546875" y="-25.25" width="211.09375" height="50.5"/><g class="label" style="" transform="translate(-77.546875, -11.25)"><rect/><foreignObject width="155.09375" height="22.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Save history snapshots</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-render-11" data-look="classic" transform="translate(403.8203125, 785.75)"><rect class="basic label-container" style="" x="-124.7265625" y="-25.25" width="249.453125" height="50.5"/><g class="label" style="" transform="translate(-96.7265625, -11.25)"><rect/><foreignObject width="193.453125" height="22.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Render table or JSON output</p></span></div></foreignObject></g></g><g class="node default" id="my-svg-flowchart-history-13" data-look="classic" transform="translate(113.546875, 922.75)"><rect class="basic label-container" style="" x="-97.609375" y="-25.25" width="195.21875" height="50.5"/><g class="label" style="" transform="translate(-69.609375, -11.25)"><rect/><foreignObject width="139.21875" height="22.5"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>Render history views</p></span></div></foreignObject></g></g></g></g></g><defs><filter id="my-svg-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="my-svg-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><linearGradient id="my-svg-gradient" gradientUnits="objectBoundingBox" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#6cb4ff" stop-opacity="1"/><stop offset="100%" stop-color="#2c4060" stop-opacity="1"/></linearGradient></svg></div></figure>
+<h2 id="example-output">Example output</h2>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code>$ ./ai-usage
+ Provider       Balance         Spend       Tokens In (Hit)  Tokens In (Miss)  Tokens Out  Tokens Total
+─────────────────────────────────────────────────────────────────────────────────────────────────────
+   DeepSeek         $6.03          $3.97          118,428,800          7,388,843      379,566    126,197,209
+        xAI        $25.00          $0.60              315,968            435,709        2,454        754,131
+ OpenRouter        $55.20          $0.72                    —                  —            —              —
+    Vast.ai         $4.01         $20.99                    —                  —            —              —
+     Exa             —           $0.12                    —                  —            —              —
+    X API          $24.99          $0.04                    —                  —            —              —
+    Nous         $39.84         $25.66                    —                  —            —              —
+
+Subscription Quotas
+Subscription      Tier       Resource                 Remaining  Resets In
+────────────────  ─────────  ───────────────────────  ─────────  ─────────
+Claude Code       Pro        Session                       100%         5h
+Claude Code       Pro        Weekly                         82%      4d12h
+Codex (primary)   Plus       Session                        95%        45m
+Codex (primary)   Plus       Weekly                         72%       2d2h
+Codex (partner)   Pro        Session                        88%      1h10m
+Codex (partner)   Pro        Weekly                         61%      4d12h
+Google AI Studio  Free       Claude Opus 4.6 (Think)       100%      4h59m
+Google AI Studio  Free       Gemini 3.1 Pro (High)         100%      4h59m
+Google AI Studio  Free       Gemini 3.5 Flash (High)       100%      4h59m
+</code></pre></div>
+
+<h2 id="usage">Usage</h2>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code>./ai-usage<span style="color: #F8F8F2">                          </span><span style="color: #959077"># all providers</span>
+./ai-usage<span style="color: #F8F8F2"> help                     </span><span style="color: #959077"># same as --help</span>
+./ai-usage<span style="color: #F8F8F2"> </span>-p<span style="color: #F8F8F2"> </span>xai<span style="color: #F8F8F2">                   </span><span style="color: #959077"># single provider</span>
+./ai-usage<span style="color: #F8F8F2"> </span>-p<span style="color: #F8F8F2"> </span>deepseek,xai,openrouter,codex<span style="color: #F8F8F2">  </span><span style="color: #959077"># multiple providers</span>
+./ai-usage<span style="color: #F8F8F2"> </span>-m<span style="color: #F8F8F2">                       </span><span style="color: #959077"># per-model token breakdown</span>
+./ai-usage<span style="color: #F8F8F2"> </span>-m<span style="color: #F8F8F2"> </span>-p<span style="color: #F8F8F2"> </span>deepseek,xai<span style="color: #F8F8F2">       </span><span style="color: #959077"># per-model, filtered</span>
+./ai-usage<span style="color: #F8F8F2"> </span>-j<span style="color: #F8F8F2">                       </span><span style="color: #959077"># JSON output</span>
+./ai-usage<span style="color: #F8F8F2"> </span>-j<span style="color: #F8F8F2"> </span>-m<span style="color: #F8F8F2">                    </span><span style="color: #959077"># JSON with per-model breakdown</span>
+./ai-usage<span style="color: #F8F8F2"> </span>--history<span style="color: #F8F8F2">                 </span><span style="color: #959077"># last 10 fetch groups (all providers)</span>
+./ai-usage<span style="color: #F8F8F2"> </span>--history<span style="color: #F8F8F2"> </span>--history-provider<span style="color: #F8F8F2"> </span>xai<span style="color: #F8F8F2">  </span><span style="color: #959077"># last 10 rows for xAI only</span>
+./ai-usage<span style="color: #F8F8F2"> </span>--history<span style="color: #F8F8F2"> </span>--history-limit<span style="color: #F8F8F2"> </span><span style="color: #AE81FF">30</span><span style="color: #F8F8F2">  </span><span style="color: #959077"># last 30 fetch groups</span>
+./ai-usage<span style="color: #F8F8F2"> </span>--refresh-auth<span style="color: #F8F8F2"> </span>nous<span style="color: #F8F8F2">       </span><span style="color: #959077"># refresh cached Nous OAuth token</span>
+</code></pre></div>
+
+<h3 id="json-output">JSON output</h3>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code><span style="color: #ED007E; background-color: #1E0010">$</span><span style="color: #F8F8F2"> </span><span style="color: #ED007E; background-color: #1E0010">./ai</span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">usage</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">j</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">p</span><span style="color: #F8F8F2"> </span><span style="color: #ED007E; background-color: #1E0010">deepseek</span>
+<span style="color: #F8F8F2">{</span>
+<span style="color: #F8F8F2">  </span><span style="color: #FF4689">&quot;api&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">    </span><span style="color: #FF4689">&quot;deepseek&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;balance&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">6.03</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;period_spend&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">3.97</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;tokens_in_hit&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">118428800</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;tokens_in_hit_percentage&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">94.1</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;tokens_in_miss&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">7388843</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;tokens_in_miss_percentage&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">5.9</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;tokens_out&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">379566</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;tokens_total&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">126197209</span>
+<span style="color: #F8F8F2">    }</span>
+<span style="color: #F8F8F2">  }</span>
+<span style="color: #F8F8F2">}</span>
+</code></pre></div>
+
+<p>With <code>-m</code>, providers that expose per-model or per-event data get a <code>models</code> key:</p>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code><span style="color: #ED007E; background-color: #1E0010">$</span><span style="color: #F8F8F2"> </span><span style="color: #ED007E; background-color: #1E0010">./ai</span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">usage</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">j</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">m</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">p</span><span style="color: #F8F8F2"> </span><span style="color: #ED007E; background-color: #1E0010">deepseek</span>
+<span style="color: #F8F8F2">{</span>
+<span style="color: #F8F8F2">  </span><span style="color: #FF4689">&quot;api&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">    </span><span style="color: #FF4689">&quot;deepseek&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;balance&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">6.03</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;period_spend&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">3.97</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;tokens_in_hit&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">118428800</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #ED007E; background-color: #1E0010">...</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;models&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">        </span><span style="color: #FF4689">&quot;deepseek-v4-pro&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;tokens_in_hit&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">118428800</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;tokens_in_hit_percentage&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">94.1</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;tokens_in_miss&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">7388843</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;tokens_in_miss_percentage&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">5.9</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;tokens_out&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">379566</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;tokens_total&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">126197209</span>
+<span style="color: #F8F8F2">        },</span>
+<span style="color: #F8F8F2">        </span><span style="color: #FF4689">&quot;deepseek-v4-flash&quot;</span><span style="color: #F8F8F2">: { </span><span style="color: #ED007E; background-color: #1E0010">...</span><span style="color: #F8F8F2"> }</span>
+<span style="color: #F8F8F2">      }</span>
+<span style="color: #F8F8F2">    }</span>
+<span style="color: #F8F8F2">  }</span>
+<span style="color: #F8F8F2">}</span>
+</code></pre></div>
+
+<p>Codex JSON is under the <code>subscription</code> branch. When Hermes has multiple <code>openai-codex</code> credential-pool entries, each account is keyed by its Hermes label:</p>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code><span style="color: #ED007E; background-color: #1E0010">$</span><span style="color: #F8F8F2"> </span><span style="color: #ED007E; background-color: #1E0010">./ai</span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">usage</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">j</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">p</span><span style="color: #F8F8F2"> </span><span style="color: #ED007E; background-color: #1E0010">codex</span>
+<span style="color: #F8F8F2">{</span>
+<span style="color: #F8F8F2">  </span><span style="color: #FF4689">&quot;subscription&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">    </span><span style="color: #FF4689">&quot;codex&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;accounts&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">        </span><span style="color: #FF4689">&quot;primary&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;label&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;primary&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;plan_type&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;plus&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;session&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">            </span><span style="color: #FF4689">&quot;used_pct&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">45</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">            </span><span style="color: #FF4689">&quot;remaining_pct&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">55</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">            </span><span style="color: #FF4689">&quot;duration_mins&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">300</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">            </span><span style="color: #FF4689">&quot;resets_at&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">1778467926</span>
+<span style="color: #F8F8F2">          },</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;weekly&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">            </span><span style="color: #FF4689">&quot;used_pct&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">7</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">            </span><span style="color: #FF4689">&quot;remaining_pct&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">93</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">            </span><span style="color: #FF4689">&quot;duration_mins&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">10080</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">            </span><span style="color: #FF4689">&quot;resets_at&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">1779054726</span>
+<span style="color: #F8F8F2">          }</span>
+<span style="color: #F8F8F2">        },</span>
+<span style="color: #F8F8F2">        </span><span style="color: #FF4689">&quot;partner&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;label&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;partner&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;plan_type&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;pro&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;session&quot;</span><span style="color: #F8F8F2">: { </span><span style="color: #FF4689">&quot;remaining_pct&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">88</span><span style="color: #F8F8F2"> },</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;weekly&quot;</span><span style="color: #F8F8F2">: { </span><span style="color: #FF4689">&quot;remaining_pct&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">61</span><span style="color: #F8F8F2"> }</span>
+<span style="color: #F8F8F2">        }</span>
+<span style="color: #F8F8F2">      }</span>
+<span style="color: #F8F8F2">    }</span>
+<span style="color: #F8F8F2">  }</span>
+<span style="color: #F8F8F2">}</span>
+</code></pre></div>
+
+<p>If no Hermes Codex pool exists, <code>ai-usage</code> falls back to the legacy local Codex CLI app-server path. If that local OAuth is stale, it runs interactive <code>codex login</code> once from a TTY, then retries the app-server request. In non-interactive shells, or if login still fails, Codex stays visible in the subscription table as <code>Rate Limits — auth failed</code>.</p>
+<p>Nous uses subscription credits first, then non-expiring top-up credits. The main <code>balance</code> is total usable credits; JSON keeps the buckets explicit:</p>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code><span style="color: #ED007E; background-color: #1E0010">$</span><span style="color: #F8F8F2"> </span><span style="color: #ED007E; background-color: #1E0010">./ai</span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">usage</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">j</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">p</span><span style="color: #F8F8F2"> </span><span style="color: #66D9EF">n</span><span style="color: #ED007E; background-color: #1E0010">ous</span>
+<span style="color: #F8F8F2">{</span>
+<span style="color: #F8F8F2">  </span><span style="color: #FF4689">&quot;api&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">    </span><span style="color: #FF4689">&quot;nous&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;balance&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">39.84</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;period_spend&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">25.66</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;plan_type&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;Plus&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;monthly_charge&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">20.00</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;monthly_credits&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">22.00</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;credits_remaining&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">39.84</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;total_usable_credits&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">39.84</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;subscription_credits_remaining&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">0.00</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;top_up_credits_remaining&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">39.84</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;purchased_credits_remaining&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">39.84</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;rollover_credits&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">3.66</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;current_period_end&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;2026-07-11T15:17:45.000Z&quot;</span>
+<span style="color: #F8F8F2">    }</span>
+<span style="color: #F8F8F2">  }</span>
+<span style="color: #F8F8F2">}</span>
+</code></pre></div>
+
+<p>Google AI Studio / Antigravity JSON keeps entitlement and quota sources separate:</p>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code><span style="color: #ED007E; background-color: #1E0010">$</span><span style="color: #F8F8F2"> </span><span style="color: #ED007E; background-color: #1E0010">./ai</span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">usage</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">j</span><span style="color: #F8F8F2"> </span><span style="color: #AE81FF">-</span><span style="color: #ED007E; background-color: #1E0010">p</span><span style="color: #F8F8F2"> </span><span style="color: #ED007E; background-color: #1E0010">google</span>
+<span style="color: #F8F8F2">{</span>
+<span style="color: #F8F8F2">  </span><span style="color: #FF4689">&quot;subscription&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">    </span><span style="color: #FF4689">&quot;google ai studio&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;plan_type&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;free&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;plan_label&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;Antigravity Starter Quota&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;plan_source&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;loadCodeAssist.paidTier&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;subscription_status&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;free&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;raw_tier_id&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;free-tier&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;quota_source&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;fetchAvailableModels&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">      </span><span style="color: #FF4689">&quot;models&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">        </span><span style="color: #FF4689">&quot;gemini-3.1-pro-high&quot;</span><span style="color: #F8F8F2">: {</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;display_name&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #E6DB74">&quot;Gemini 3.1 Pro (High)&quot;</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;remaining_pct&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">100</span><span style="color: #F8F8F2">,</span>
+<span style="color: #F8F8F2">          </span><span style="color: #FF4689">&quot;resets_at&quot;</span><span style="color: #F8F8F2">: </span><span style="color: #AE81FF">1782592247</span>
+<span style="color: #F8F8F2">        }</span>
+<span style="color: #F8F8F2">      }</span>
+<span style="color: #F8F8F2">    }</span>
+<span style="color: #F8F8F2">  }</span>
+<span style="color: #F8F8F2">}</span>
+</code></pre></div>
+
+<h2 id="providers">Providers</h2>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Balance</th>
+<th>Period Spend</th>
+<th>Tokens Hit</th>
+<th>Tokens Miss</th>
+<th>Tokens Out</th>
+<th>Per-model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek</td>
+<td>✅ API</td>
+<td>✅ calc from tokens</td>
+<td>✅ platform API</td>
+<td>✅ platform API</td>
+<td>✅ platform API</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>xAI</td>
+<td>✅ mgmt API</td>
+<td>✅ invoice API</td>
+<td>✅ invoice API</td>
+<td>✅ invoice API</td>
+<td>✅ invoice API</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>OpenRouter</td>
+<td>✅ credits API</td>
+<td>✅ key monthly usage</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Vast.ai</td>
+<td>✅ API</td>
+<td>✅ charges API</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Exa</td>
+<td>✅ dashboard session</td>
+<td>✅ admin API</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>X API</td>
+<td>✅ console API</td>
+<td>✅ usage × pricing</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Claude Code</td>
+<td>—</td>
+<td>—</td>
+<td>Local/OAuth usage</td>
+<td>Local/OAuth usage</td>
+<td>Local/OAuth usage</td>
+<td>Provider-specific</td>
+</tr>
+<tr>
+<td>Nous</td>
+<td>✅ OAuth API total usable credits</td>
+<td>✅ usage credit drawdown</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Google AI Studio</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Codex uses its own data model: session usage %, weekly usage %, and plan type. No dollar balance or token tracking. Preferred path: query the Codex usage API once per Hermes <code>credential_pool.openai-codex</code> account and render each account label separately. Legacy fallback: query the single local Codex CLI app-server account.</p>
+<p>OpenRouter reports account credits and all-time usage through <code>/credits</code>; <code>ai-usage</code> displays remaining credits as <code>total_credits - total_usage</code>. Period spend comes from the current API key's <code>usage_monthly</code> field from <code>/key</code>. No aggregate token data is exposed by those endpoints.</p>
+<p>Exa is skipped unless <code>EXA_ENABLED=true</code>; this keeps the default all-provider run from making slow or rate-limited dashboard/admin calls. Skipped providers remain visible: table output prints the skip reason in the <code>Spend</code> column, and JSON output includes <code>status: "skipped"</code>, <code>reason</code>, and a safe <code>detail</code> string.</p>
+<p>Claude Code uses subscription/rate-limit windows and local/OAuth usage state. Its model details do not map cleanly to the generic dollar-balance rows.</p>
+<p>Nous Research uses subscription credits ($20+/mo) that deplete before separately purchased/top-up credits as you use managed services (web search, image gen, TTS, browser). No token tracking — credits are the unit of consumption. Queried via the Portal OAuth account API with automatic refresh-token retry when Hermes auth state includes a Nous <code>refresh_token</code>. <code>balance</code> is total usable credits; JSON also exposes subscription, top-up/purchased, monthly, and rollover credit buckets. Stored in the <code>api</code> JSON branch (not <code>subscription</code>) since its credit model behaves like API credits.</p>
+<p>Google AI Studio / Antigravity separates entitlement from quota availability. The displayed tier comes from Cloud Code <code>loadCodeAssist</code> (<code>paidTier.id</code>: <code>g1-ultra-tier</code>, <code>g1-pro-tier</code>, <code>free-tier</code>, etc.). Per-model quota rows come from <code>fetchAvailableModels</code>. Model availability alone is not treated as proof of an active Google One / Google AI subscription, because quota/model responses can persist after plan changes.</p>
+<p><a href="ai-usage-high-level-doc.html">High-level doc</a> · <a href="docs/README.html">Documentation map</a> · <a href="docs/EXECUTIVE_BRIEF.html">Executive brief</a> · <a href="docs/USER_GUIDE.html">User guide</a> · <a href="docs/TESTS.html">Test inventory</a> · <a href="docs/architecture/README.html">C4 architecture</a> · <a href="docs/architecture/c4-diagrams.html">Generated diagrams</a> · <a href="docs/architecture.html">Source architecture</a> · <a href="docs/data-architecture.html">Data architecture</a> · <a href="docs/architecture/adr/README.html">ADRs</a> · <a href="AUDIT.html">Audit report</a></p>
+<h2 id="api-endpoints">API endpoints</h2>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Data</th>
+<th>Endpoint</th>
+<th>Auth</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DeepSeek</td>
+<td>Balance</td>
+<td><code>GET api.deepseek.com/user/balance</code></td>
+<td>API key</td>
+</tr>
+<tr>
+<td>DeepSeek</td>
+<td>Token usage</td>
+<td><code>GET platform.deepseek.com/api/v0/usage/amount</code></td>
+<td>Platform auth token</td>
+</tr>
+<tr>
+<td>xAI</td>
+<td>Balance</td>
+<td><code>GET management-api.x.ai/v1/billing/teams/{id}/prepaid/balance</code></td>
+<td>Management key</td>
+</tr>
+<tr>
+<td>xAI</td>
+<td>Token + spend</td>
+<td><code>GET management-api.x.ai/v1/billing/teams/{id}/postpaid/invoice/preview</code></td>
+<td>Management key</td>
+</tr>
+<tr>
+<td>OpenRouter</td>
+<td>Balance</td>
+<td><code>GET openrouter.ai/api/v1/credits</code></td>
+<td>API key</td>
+</tr>
+<tr>
+<td>OpenRouter</td>
+<td>Spend</td>
+<td><code>GET openrouter.ai/api/v1/key</code> (<code>usage_monthly</code>)</td>
+<td>API key</td>
+</tr>
+<tr>
+<td>Vast.ai</td>
+<td>Balance</td>
+<td><code>GET console.vast.ai/api/v0/users/current/</code></td>
+<td>API key</td>
+</tr>
+<tr>
+<td>Vast.ai</td>
+<td>Spend</td>
+<td><code>GET cloud.vast.ai/api/v0/charges/</code> (current month)</td>
+<td>API key</td>
+</tr>
+<tr>
+<td>Exa</td>
+<td>Balance</td>
+<td><code>GET dashboard.exa.ai/api/get-orb-balance</code></td>
+<td>Session cookie</td>
+</tr>
+<tr>
+<td>Exa</td>
+<td>Spend</td>
+<td><code>GET admin-api.exa.ai/team-management/api-keys/{id}/usage</code></td>
+<td>Service key</td>
+</tr>
+<tr>
+<td>X API</td>
+<td>Balance</td>
+<td><code>GET console.x.com/api/accounts/{id}/credits</code></td>
+<td>Session cookies</td>
+</tr>
+<tr>
+<td>X API</td>
+<td>Spend</td>
+<td><code>GET console.x.com/api/accounts/{id}/usage</code> + pricing</td>
+<td>Session cookies</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td>Session/weekly quota rows</td>
+<td>Preferred: <code>GET chatgpt.com/backend-api/wham/usage</code> per Hermes <code>credential_pool.openai-codex</code> entry; fallback: <code>codex app-server</code> JSON-RPC <code>account/rateLimits/read</code></td>
+<td>OAuth (<code>~/.hermes/auth.json</code>; fallback <code>~/.codex/auth.json</code>)</td>
+</tr>
+<tr>
+<td>Claude</td>
+<td>Session/weekly + tokens</td>
+<td><code>GET api.anthropic.com/api/oauth/usage</code> + local files</td>
+<td>OAuth (<code>~/.claude/.credentials.json</code>, refreshed through Claude Code CLI)</td>
+</tr>
+<tr>
+<td>Nous</td>
+<td>Total usable credits, credit buckets, period spend</td>
+<td><code>GET portal.nousresearch.com/api/oauth/account</code></td>
+<td>OAuth (~/.hermes/auth.json)</td>
+</tr>
+<tr>
+<td>Google AI Studio</td>
+<td>Entitlement tier</td>
+<td><code>POST daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist</code></td>
+<td>OAuth (~/.hermes/auth/google_oauth.json)</td>
+</tr>
+<tr>
+<td>Google AI Studio</td>
+<td>Model quotas</td>
+<td><code>POST daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels</code></td>
+<td>OAuth (~/.hermes/auth/google_oauth.json)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="setup">Setup</h2>
+<p>Add to <code>~/.hermes/.env</code>:</p>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code><span style="color: #F8F8F2">DEEPSEEK_API_KEY</span><span style="color: #FF4689">=</span>sk-...<span style="color: #F8F8F2">            </span><span style="color: #959077"># from platform.deepseek.com/api_keys</span>
+<span style="color: #F8F8F2">DEEPSEEK_AUTH_TOKEN</span><span style="color: #FF4689">=</span>...<span style="color: #F8F8F2">            </span><span style="color: #959077"># from platform.deepseek.com Network tab</span>
+<span style="color: #F8F8F2">XAI_MANAGEMENT_KEY</span><span style="color: #FF4689">=</span>xai-token-...<span style="color: #F8F8F2">   </span><span style="color: #959077"># from console.x.ai/team/default/management-keys</span>
+<span style="color: #F8F8F2">XAI_TEAM_ID</span><span style="color: #FF4689">=</span>...<span style="color: #F8F8F2">                    </span><span style="color: #959077"># UUID from management keys page</span>
+<span style="color: #F8F8F2">OPENROUTER_API_KEY</span><span style="color: #FF4689">=</span>sk-or-v1-...<span style="color: #F8F8F2">    </span><span style="color: #959077"># from openrouter.ai/settings/keys</span>
+<span style="color: #F8F8F2">VASTAI_API_KEY</span><span style="color: #FF4689">=</span>***<span style="color: #F8F8F2">                 </span><span style="color: #959077"># from cloud.vast.ai/manage-keys</span>
+<span style="color: #F8F8F2">EXA_SERVICE_KEY</span><span style="color: #FF4689">=</span>***<span style="color: #F8F8F2">                </span><span style="color: #959077"># from dashboard.exa.ai (service key, not search key)</span>
+<span style="color: #F8F8F2">EXA_SESSION_TOKEN</span><span style="color: #FF4689">=</span>***<span style="color: #F8F8F2">              </span><span style="color: #959077"># from dashboard.exa.ai Network tab (expires, see below)</span>
+<span style="color: #F8F8F2">EXA_ENABLED</span><span style="color: #FF4689">=</span><span style="color: #F8F8F2">true                   </span><span style="color: #959077"># optional: Exa is skipped unless explicitly enabled</span>
+<span style="color: #F8F8F2">X_API_AUTH_TOKEN</span><span style="color: #FF4689">=</span>***<span style="color: #F8F8F2">               </span><span style="color: #959077"># from console.x.com Network tab → auth_token cookie</span>
+<span style="color: #F8F8F2">X_API_CT0</span><span style="color: #FF4689">=</span>***<span style="color: #F8F8F2">                      </span><span style="color: #959077"># from console.x.com Network tab → ct0 cookie</span>
+<span style="color: #F8F8F2">X_API_ACCOUNT_ID</span><span style="color: #FF4689">=</span>***<span style="color: #F8F8F2">               </span><span style="color: #959077"># from console.x.com URL /accounts/{id}</span>
+</code></pre></div>
+
+<p>Codex prefers Hermes-managed credentials. List configured accounts and verify output with:</p>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code>hermes<span style="color: #F8F8F2"> </span>auth<span style="color: #F8F8F2"> </span>list<span style="color: #F8F8F2"> </span>openai-codex
+./ai-usage<span style="color: #F8F8F2"> </span>-p<span style="color: #F8F8F2"> </span>codex
+./ai-usage<span style="color: #F8F8F2"> </span>-j<span style="color: #F8F8F2"> </span>-p<span style="color: #F8F8F2"> </span>codex
+</code></pre></div>
+
+<p>If Hermes has no Codex credential pool, the fallback path requires the Codex CLI installed and authenticated:</p>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code>npm<span style="color: #F8F8F2"> </span>i<span style="color: #F8F8F2"> </span>-g<span style="color: #F8F8F2"> </span>@openai/codex-cli
+codex<span style="color: #F8F8F2"> </span>login
+</code></pre></div>
+
+<p>Claude Code reads local config files automatically (<code>~/.claude.json</code>, <code>~/.claude/stats-cache.json</code>, <code>~/.claude/.credentials.json</code>). No separate setup is needed beyond having Claude Code installed and authenticated. Tier display uses the OAuth credential <code>subscriptionType</code> when Claude still writes it, otherwise falls back to <code>~/.claude.json</code> <code>oauthAccount.organizationType</code> (for example <code>claude_pro</code> → <code>Pro</code>). If the cached OAuth access token is expired or the usage endpoint returns an auth/rate-limit status, <code>ai-usage</code> runs a minimal Claude Code CLI prompt to let Claude refresh its own credentials, then retries the usage endpoint with the fresh token.</p>
+<p>Nous reads the OAuth token from <code>~/.hermes/auth.json</code> (set up by <code>hermes model</code> or the Hermes setup wizard). No manual credential needed if you've already configured Nous Portal as a provider in Hermes. To force a cached-token refresh without running the full provider table:</p>
+<div class="codehilite" style="background: #272822"><pre style="line-height: 125%;"><span></span><code>ai-usage<span style="color: #F8F8F2"> </span>--refresh-auth<span style="color: #F8F8F2"> </span>nous
+</code></pre></div>
+
+<p>Google AI Studio reads Google OAuth credentials from <code>~/.hermes/auth/google_oauth.json</code> (written by the Hermes CLI when authenticating the <code>google-agy</code> provider). It handles refresh-token rotation, checks <code>loadCodeAssist</code> for the current paid/free entitlement, retries once after auth/rate-limit failures from Cloud Code, and resolves the GCP project ID dynamically.</p>
+<h3 id="credential-refresh">Credential refresh</h3>
+<p>Three browser-session credentials expire — <code>DEEPSEEK_AUTH_TOKEN</code>, <code>EXA_SESSION_TOKEN</code>, and the X API cookies. Claude Code, Nous, Google, and Codex use OAuth-managed credentials through their owning tools. Codex multi-account display reads Hermes's <code>openai-codex</code> credential pool directly; refresh or add accounts with Hermes auth commands. OpenRouter and the other plain API-key credentials are long-lived until manually rotated.</p>
+<p><strong>Nous:</strong> OAuth refresh runs automatically before token expiry, after a <code>401</code>/<code>403</code> account response, and on demand with <code>ai-usage --refresh-auth nous</code>. If Hermes auth state has no Nous <code>refresh_token</code>, the row renders <code>auth missing</code>/<code>auth failed</code>; re-authenticate with <code>hermes auth add</code> or <code>hermes model</code> to restore refreshable state.</p>
+<p><strong>DeepSeek:</strong> When token usage shows <code>—</code>, refresh:
+1. Open https://platform.deepseek.com/usage in Chrome
+2. Press F12 → Network tab → refresh the page
+3. Find any request to <code>platform.deepseek.com</code> → copy the <code>Authorization: Bearer ***</code> header value
+4. Update <code>DEEPSEEK_AUTH_TOKEN</code> in <code>~/.hermes/.env</code></p>
+<p><strong>Exa:</strong> Exa is disabled by default to avoid slow/rate-limited dashboard calls. Set <code>EXA_ENABLED=true</code> in <code>~/.hermes/.env</code> or the process environment before running <code>ai-usage</code>. When balance shows <code>—</code> while enabled, refresh:
+1. Open https://dashboard.exa.ai/new-billing in Chrome
+2. Press F12 → Network tab → refresh the page
+3. Find the request to <code>get-orb-balance</code> → click it → Cookies tab
+4. Copy the <code>next-auth.session-token</code> value
+5. Update <code>EXA_SESSION_TOKEN</code> in <code>~/.hermes/.env</code></p>
+<p><strong>X API:</strong> When balance shows <code>—</code>, refresh:
+1. Open https://console.x.com in Chrome
+2. Press F12 → Network tab → refresh
+3. Find any request → Cookies tab → copy <code>auth_token</code> and <code>ct0</code>
+4. Update <code>X_API_AUTH_TOKEN</code> and <code>X_API_CT0</code> in <code>~/.hermes/.env</code></p>
+<p><strong>Codex:</strong> Multi-account quota display reads Hermes <code>openai-codex</code> credential-pool access tokens. If a pool account is stale, that account renders an <code>auth failed</code> or <code>api error</code> row while other accounts remain visible; refresh or re-add it through Hermes auth. If no Hermes pool exists, the legacy Codex CLI app-server fallback can still run <code>codex login</code> once when attached to an interactive TTY.</p>
+<p><strong>Google AI Studio:</strong> OAuth refresh runs automatically when the cached token is near expiry and retries once after <code>401</code>, <code>403</code>, or <code>429</code> from Cloud Code entitlement/quota endpoints. If <code>loadCodeAssist</code> fails, <code>meta.plan_error</code> records the tier-detection failure and the table falls back to an unknown entitlement. If quota fetch fails, Google quota rows may be absent and <code>meta.api_error</code> records the failure.</p>
+<p><strong>Claude Code:</strong> OAuth token auto-refreshes through the Claude Code CLI. <code>ai-usage</code> refreshes proactively when the cached token expires within two hours and retries once after <code>401</code>, <code>403</code>, or <code>429</code> from the OAuth usage endpoint. The refresh command is intentionally tiny (<code>claude -p ping --effort low --max-turns 1 --output-format json --no-session-persistence</code>) but can still consume a small amount of Claude Code rate-limit quota. Tier display comes from current Claude account metadata, preferring <code>subscriptionType</code> and falling back to <code>oauthAccount.organizationType</code>; transport labels such as <code>stripe_subscription</code> are ignored. If refresh fails, the quota table shows <code>auth failed</code> instead of the older misleading <code>403 blocked</code> label.</p>
+  </article>
+  <div class="md-footer">
+    Rendered from <code>README.md</code> — the Markdown file is the canonical,
+    version-controlled source. This HTML is generated (regenerate with
+    <code>scripts/render_docs.py</code>); do not hand-edit.
+  </div>
+</div>
+</body>
+</html>

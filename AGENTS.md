@@ -7,14 +7,19 @@ Guidance for AI coding agents working in this repo. Keep changes surgical and ve
 | Document | Role |
 |---|---|
 | [`README.md`](README.md) | User-facing usage, provider table, API endpoints, credential setup. |
+| [`docs/README.md`](docs/README.md) | Documentation reading path and generated HTML companion contract. |
+| [`docs/EXECUTIVE_BRIEF.md`](docs/EXECUTIVE_BRIEF.md) | High-level value, maturity, and risk posture. |
+| [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) | Operator-first usage guide and troubleshooting map. |
+| [`docs/TESTS.md`](docs/TESTS.md) | Generated test inventory and verification commands. |
 | [`docs/architecture/README.md`](docs/architecture/README.md) | C4 model-as-code workflow, generated artifact contract, and verification gate. |
 | [`docs/architecture/workspace.dsl`](docs/architecture/workspace.dsl) | Canonical Structurizr C4 source for topology diagrams. |
 | [`docs/architecture.md`](docs/architecture.md) | Canonical Markdown/Mermaid architecture. |
 | [`docs/data-architecture.md`](docs/data-architecture.md) | Canonical normalized data model and field mapping. |
 | [`docs/architecture/adr/README.md`](docs/architecture/adr/README.md) | Architecture Decision Record index. |
 | [`AUDIT.md`](AUDIT.md) | Code quality audit history. |
-| [`architecture.html`](architecture.html) | Legacy rendered architecture companion. Do not edit unless explicitly regenerating rendered docs. |
-| [`data-architecture.html`](data-architecture.html) | Legacy rendered data companion. Do not edit unless explicitly regenerating rendered docs. |
+| [`ai-usage-high-level-doc.html`](ai-usage-high-level-doc.html) | Generated visual front door from `scripts/showcase.spec.json`. Do not hand-edit. |
+| [`README.html`](README.html), `docs/*.html` | Generated browser companions from Markdown. Do not hand-edit. |
+| [`architecture.html`](architecture.html), [`data-architecture.html`](data-architecture.html) | Legacy root renders retained as historical references. |
 
 ## What this is
 
@@ -57,8 +62,9 @@ src/ai_usage/
 4. Add any new credential fields to `src/ai_usage/config.py`.
 5. Add tests in `tests/test_providers/test_<name>.py`.
 6. Update `README.md`, `docs/architecture.md`, and `docs/data-architecture.md`.
-7. If provider topology, auth flow, or data boundaries change, update `docs/architecture/workspace.dsl`, regenerate `docs/architecture/diagrams/`, and add or supersede an ADR when the decision is long-lived.
-8. Keep provider-specific quirks inside the provider module unless an existing shared abstraction already fits.
+7. Regenerate `docs/TESTS.md`, `ai-usage-high-level-doc.html`, and same-path HTML companions when counts, docs, or rendered navigation change.
+8. If provider topology, auth flow, or data boundaries change, update `docs/architecture/workspace.dsl`, regenerate `docs/architecture/diagrams/`, and add or supersede an ADR when the decision is long-lived.
+9. Keep provider-specific quirks inside the provider module unless an existing shared abstraction already fits.
 
 ### Code style
 
@@ -90,9 +96,20 @@ cd ~/repos/workstation/ai-usage
 
 Tests should mock HTTP responses and local subprocess/file interactions. Do not run live provider calls from tests.
 
+### Generated docs
+
+```bash
+python scripts/generate_test_inventory.py --write
+python scripts/generate_showcase.py --spec scripts/showcase.spec.json
+python scripts/render_docs.py --repo . --slug ai-usage
+```
+
+Before committing docs changes, run all three matching `--check` gates. Markdown is canonical; generated HTML companions are committed for polished browser reading and must not be hand-edited.
+`render_docs.py` needs build-time `markdown`, `pygments`, `mmdc`, and a Puppeteer/Chrome headless-shell; keep those dependencies out of product code.
+
 ## Pitfalls
 
 - `ProviderData.meta` is the expected place for provider-level failures, timeout markers, and partial-fetch context.
 - Codex uses Hermes credential-pool accounts plus the Codex usage API for multi-account quotas, with the Codex CLI app-server JSON-RPC path retained as fallback.
 - Claude and Google data depend on local authenticated developer tooling/OAuth state.
-- `docs/architecture/workspace.dsl` is canonical for C4 topology; generated artifacts under `docs/architecture/diagrams/` must be regenerated from it. Source-level Markdown/Mermaid docs remain canonical for their narrative/data scope; HTML files are legacy rendered companions unless explicitly regenerated.
+- `docs/architecture/workspace.dsl` is canonical for C4 topology; generated artifacts under `docs/architecture/diagrams/` must be regenerated from it. Source-level Markdown/Mermaid docs remain canonical for their narrative/data scope; same-path HTML files are generated companions from `scripts/render_docs.py`.

@@ -6,7 +6,7 @@
 |---|---|
 | Owner | Mike Nicks |
 | Status | Active |
-| Last updated | 2026-06-16 |
+| Last updated | 2026-06-28 |
 | Canonical C4 source | [`workspace.dsl`](workspace.dsl) |
 | Generated atlas | [`c4-diagrams.md`](c4-diagrams.md) |
 | ADR index | [`adr/README.md`](adr/README.md) |
@@ -30,6 +30,10 @@ The older source-level Markdown documents remain useful and intentionally stay i
 |---|---|
 | [`../architecture.md`](../architecture.md) | Source-level architecture narrative and Mermaid diagrams. |
 | [`../data-architecture.md`](../data-architecture.md) | Normalized data model and provider field mapping. |
+| [`../README.md`](../README.md) | Documentation reading path and generated HTML companion contract. |
+| [`../EXECUTIVE_BRIEF.md`](../EXECUTIVE_BRIEF.md) | High-level value, maturity, and risk posture. |
+| [`../USER_GUIDE.md`](../USER_GUIDE.md) | Operator-first usage guide and troubleshooting map. |
+| [`../TESTS.md`](../TESTS.md) | Generated test inventory and verification commands. |
 | [`../../README.md`](../../README.md) | User-facing CLI usage, providers, endpoints, and setup. |
 | [`../../AGENTS.md`](../../AGENTS.md) | Agent operating rules for provider and documentation changes. |
 
