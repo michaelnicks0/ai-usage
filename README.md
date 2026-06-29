@@ -17,13 +17,21 @@ Cross-provider balance, spend, subscription quota, and token usage — one comma
 
 ```mermaid
 flowchart TD
-    command["ai-usage CLI command"] --> config["Load env and local OAuth credentials"]
-    config --> selection["Select all, one, or multiple providers"]
-    selection --> fetch["Fetch provider balances, spend, quotas, and tokens"]
-    fetch --> normalize["Normalize provider results"]
-    normalize --> persist["Save history snapshots"]
-    normalize --> render["Render table or JSON output"]
-    persist --> history["Render history views"]
+    command["ai-usage CLI\nsingle command"]:::entry --> config["Load local auth\nenv + OAuth state"]:::local
+    config --> selection{"Provider scope?"}:::decision
+    selection --> fetch["Provider data\nbalances · spend · quotas · tokens"]:::external
+    fetch --> normalize["Normalize into\nProviderData + TokenData"]:::core
+    normalize --> render["Current report\ntable or JSON"]:::output
+    normalize --> persist[("SQLite history\n~/.hermes/ai-usage.db")]:::store
+    persist --> history["History views\nall providers or filtered"]:::output
+
+    classDef entry fill:#dbeafe,stroke:#2563eb,color:#111827,stroke-width:1.5px;
+    classDef local fill:#fef3c7,stroke:#d97706,color:#111827,stroke-width:1.5px;
+    classDef decision fill:#f3e8ff,stroke:#9333ea,color:#111827,stroke-width:1.5px;
+    classDef external fill:#fee2e2,stroke:#dc2626,color:#111827,stroke-width:1.5px;
+    classDef core fill:#dcfce7,stroke:#16a34a,color:#111827,stroke-width:1.5px;
+    classDef store fill:#ede9fe,stroke:#7c3aed,color:#111827,stroke-width:1.5px;
+    classDef output fill:#e0f2fe,stroke:#0284c7,color:#111827,stroke-width:1.5px;
 ```
 
 ## Example output
