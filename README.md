@@ -273,6 +273,8 @@ EXA_ENABLED=true                   # optional: Exa is skipped unless explicitly 
 X_API_AUTH_TOKEN=***               # from console.x.com Network tab → auth_token cookie
 X_API_CT0=***                      # from console.x.com Network tab → ct0 cookie
 X_API_ACCOUNT_ID=***               # from console.x.com URL /accounts/{id}
+GOOGLE_OAUTH_CLIENT_ID=***         # OAuth desktop client for Google AI Studio refresh
+GOOGLE_OAUTH_CLIENT_SECRET=***     # keep local; never commit real values
 ```
 
 Codex prefers Hermes-managed credentials. List configured accounts and verify output with:
@@ -298,7 +300,7 @@ Nous reads the OAuth token from `~/.hermes/auth.json` (set up by `hermes model` 
 ai-usage --refresh-auth nous
 ```
 
-Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oauth.json` (written by the Hermes CLI when authenticating the `google-agy` provider). It handles refresh-token rotation, checks `loadCodeAssist` for the current paid/free entitlement, retries once after auth/rate-limit failures from Cloud Code, and resolves the GCP project ID dynamically.
+Google AI Studio reads Google OAuth credentials from `~/.hermes/auth/google_oauth.json` (written by the Hermes CLI when authenticating the `google-agy` provider). Token refresh also needs the OAuth desktop client metadata in local config (`GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET`) or matching `client_id` / `client_secret` fields in the auth JSON. Real OAuth client values must stay outside the repo. It checks `loadCodeAssist` for the current paid/free entitlement, retries once after auth/rate-limit failures from Cloud Code, and resolves the GCP project ID dynamically.
 
 ### Credential refresh
 

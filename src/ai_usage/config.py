@@ -71,6 +71,10 @@ class Credentials:
     # Nous
     nous_access_token: str = ""
 
+    # Google AI Studio / Antigravity OAuth client metadata
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+
     # Codex / ChatGPT subscription accounts from Hermes credential pool
     codex_accounts: list[CodexAccountCredential] = field(default_factory=list)
 
@@ -186,5 +190,7 @@ def load_credentials(
         x_api_ct0=_get("X_API_CT0"),
         x_api_account_id=_get("X_API_ACCOUNT_ID"),
         nous_access_token=nous_token,
+        google_oauth_client_id=_get("GOOGLE_OAUTH_CLIENT_ID"),
+        google_oauth_client_secret=_get("GOOGLE_OAUTH_CLIENT_SECRET"),
         codex_accounts=codex_accounts,
     )

@@ -88,19 +88,24 @@ def _google_plan_from_entitlement(load_res: dict) -> dict:
     }
 
 
-def _google_refresh_token(auth_data: dict) -> str:
+def _google_refresh_token(
+    auth_data: dict,
+    client_id: str = "",
+    client_secret: str = "",
+) -> str:
     """Refresh the Google OAuth token, updating ~/.hermes/auth/google_oauth.json in-place."""
     refresh_packed = auth_data.get("refresh", "")
     if not refresh_packed:
         return auth_data.get("access", "")
-    
+
     # Split the packed token (refreshToken|projectId|managedProjectId)
     refresh_token = refresh_packed.split("|")[0]
-    
-    # Use agy / Antigravity public desktop credentials
-    client_id = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
-    client_secret = "GOOGLE_OAUTH_CLIENT_SECRET_PLACEHOLDER"
-    
+
+    client_id = client_id or str(auth_data.get("client_id", "") or "")
+    client_secret = client_secret or str(auth_data.get("client_secret", "") or "")
+    if not client_id or not client_secret:
+        return auth_data.get("access", "")
+
     try:
         data = urllib.parse.urlencode({
             "client_id": client_id,
@@ -127,11 +132,11 @@ def _google_refresh_token(auth_data: dict) -> str:
             return at
     except Exception:
         pass
-    
+
     return auth_data.get("access", "")
 
 
-def _google_get_token() -> tuple[str, str | None]:
+def _google_get_token(client_id: str = "", client_secret: str = "") -> tuple[str, str | None]:
     """Get valid Google OAuth access token and packed refresh string, refreshing if expired."""
     if not os.path.exists(_GOOGLE_AUTH_PATH):
         return "", None
@@ -146,7 +151,7 @@ def _google_get_token() -> tuple[str, str | None]:
         # Check if expired or about to expire (within 60 seconds buffer)
         if access and expires:
             if int(time.time() * 1000) >= (expires - 60000):
-                access = _google_refresh_token(auth_data)
+                access = _google_refresh_token(auth_data, client_id, client_secret)
         
         return access, refresh
     except Exception:
@@ -162,7 +167,10 @@ class GoogleProvider(Provider):
     def fetch(self) -> ProviderData:
         data = ProviderData(models=OrderedDict())
 
-        access_token, refresh_packed = _google_get_token()
+        access_token, refresh_packed = _google_get_token(
+            self.creds.google_oauth_client_id,
+            self.creds.google_oauth_client_secret,
+        )
         if not access_token:
             data.meta["auth_error"] = True
             return data
@@ -184,7 +192,11 @@ class GoogleProvider(Provider):
                 data.meta["oauth_retry_status"] = exc.code
                 with open(_GOOGLE_AUTH_PATH) as f:
                     auth_data = json.load(f)
-                refreshed_token = _google_refresh_token(auth_data)
+                refreshed_token = _google_refresh_token(
+                    auth_data,
+                    self.creds.google_oauth_client_id,
+                    self.creds.google_oauth_client_secret,
+                )
                 if not refreshed_token or refreshed_token == access_token:
                     raise
                 data.meta["token_refreshed"] = True

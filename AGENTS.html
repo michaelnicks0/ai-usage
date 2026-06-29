@@ -242,7 +242,7 @@ table.cmdtable code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
 <li>Vast.ai can also read <code>~/.config/vastai/vast_api_key</code>.</li>
 <li>Nous reads Hermes OAuth state from <code>~/.hermes/auth.json</code>.</li>
 <li>Codex prefers Hermes <code>~/.hermes/auth.json</code> <code>credential_pool.openai-codex</code> entries for multi-account quota display; the Codex CLI app-server path is a fallback when no pool entries exist.</li>
-<li>Google AI Studio reads <code>~/.hermes/auth/google_oauth.json</code> from the configured <code>google-agy</code>/Hermes OAuth path; do not add API-key auth without discussion.</li>
+<li>Google AI Studio reads <code>~/.hermes/auth/google_oauth.json</code> from the configured <code>google-agy</code>/Hermes OAuth path and local OAuth client metadata from <code>GOOGLE_OAUTH_CLIENT_ID</code> / <code>GOOGLE_OAUTH_CLIENT_SECRET</code> or auth JSON fields; do not commit real OAuth client values or add API-key auth without discussion.</li>
 <li>Exa dashboard/admin calls are skipped unless <code>EXA_ENABLED=true</code> is present in the process environment or <code>~/.hermes/.env</code>.</li>
 <li>Browser-session credentials that may expire:</li>
 <li><code>DEEPSEEK_AUTH_TOKEN</code></li>

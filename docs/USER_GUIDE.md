@@ -62,7 +62,7 @@ If a provider is not configured, the row should stay visible as blank, skipped, 
 | Codex | Hermes `credential_pool.openai-codex`; fallback Codex CLI OAuth | Multi-account quotas render per Hermes account label. |
 | Claude Code | Claude local OAuth/config files | The CLI can run a tiny Claude Code refresh prompt when token state is stale. |
 | Nous | `~/.hermes/auth.json` | OAuth refresh is automatic when refresh state is present; `--refresh-auth nous` is available. |
-| Google AI Studio | `~/.hermes/auth/google_oauth.json` | Entitlement source and quota source are kept separate. |
+| Google AI Studio | `~/.hermes/auth/google_oauth.json` plus local OAuth client metadata for refresh | Entitlement source and quota source are kept separate. |
 
 Full variable names and endpoint details live in [`../README.md`](../README.md).
 

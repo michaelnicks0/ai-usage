@@ -135,8 +135,8 @@ Latest inventory: **112 test functions** across **17 files** and **18 test class
 | `tests/test_providers/test_google.py` | `TestGoogleProvider` | `test_no_auth_file_returns_empty` | 18 | No auth file returns empty. |
 | `tests/test_providers/test_google.py` | `TestGoogleProvider` | `test_refresh_token_needed_and_success` | 27 | Refresh token needed and success. |
 | `tests/test_providers/test_google.py` | `TestGoogleProvider` | `test_auth_failure_refreshes_and_retries` | 99 | Auth failure refreshes and retries. |
-| `tests/test_providers/test_google.py` | `TestGoogleProvider` | `test_missing_remaining_fraction_is_zero` | 156 | When remainingFraction is absent from quotaInfo, quota is exhausted (0%). |
-| `tests/test_providers/test_google.py` | `TestGoogleProvider` | `test_api_error_graceful` | 203 | Api error graceful. |
+| `tests/test_providers/test_google.py` | `TestGoogleProvider` | `test_missing_remaining_fraction_is_zero` | 158 | When remainingFraction is absent from quotaInfo, quota is exhausted (0%). |
+| `tests/test_providers/test_google.py` | `TestGoogleProvider` | `test_api_error_graceful` | 205 | Api error graceful. |
 | `tests/test_providers/test_nous.py` | `(module)` | `test_missing_nous_token_reports_auth_missing` | 49 | Missing nous token reports auth missing. |
 | `tests/test_providers/test_nous.py` | `(module)` | `test_missing_access_token_refreshes_from_refresh_token` | 63 | Missing access token refreshes from refresh token. |
 | `tests/test_providers/test_nous.py` | `(module)` | `test_rejected_token_refreshes_and_retries` | 100 | Rejected token refreshes and retries. |

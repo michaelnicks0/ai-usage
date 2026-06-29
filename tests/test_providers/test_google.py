@@ -133,8 +133,10 @@ class TestGoogleProvider:
 
         refresh_calls = []
 
-        def fake_refresh(creds):
+        def fake_refresh(creds, client_id="", client_secret=""):
             refresh_calls.append(creds.copy())
+            assert client_id == "google-client-id-test"
+            assert client_secret == "test-secret"
             return "fresh_ya29"
 
         monkeypatch.setattr(google_module, "_google_refresh_token", fake_refresh)

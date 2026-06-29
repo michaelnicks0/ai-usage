@@ -78,7 +78,7 @@ src/ai_usage/
 - Vast.ai can also read `~/.config/vastai/vast_api_key`.
 - Nous reads Hermes OAuth state from `~/.hermes/auth.json`.
 - Codex prefers Hermes `~/.hermes/auth.json` `credential_pool.openai-codex` entries for multi-account quota display; the Codex CLI app-server path is a fallback when no pool entries exist.
-- Google AI Studio reads `~/.hermes/auth/google_oauth.json` from the configured `google-agy`/Hermes OAuth path; do not add API-key auth without discussion.
+- Google AI Studio reads `~/.hermes/auth/google_oauth.json` from the configured `google-agy`/Hermes OAuth path and local OAuth client metadata from `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` or auth JSON fields; do not commit real OAuth client values or add API-key auth without discussion.
 - Exa dashboard/admin calls are skipped unless `EXA_ENABLED=true` is present in the process environment or `~/.hermes/.env`.
 - Browser-session credentials that may expire:
   - `DEEPSEEK_AUTH_TOKEN`

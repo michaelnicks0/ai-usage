@@ -31,6 +31,8 @@ def credentials() -> Credentials:
         x_api_ct0="x-ct0-test",
         x_api_account_id="12345",
         nous_access_token="nous-token-test",
+        google_oauth_client_id="google-client-id-test",
+        google_oauth_client_secret="test-secret",
     )
 
 

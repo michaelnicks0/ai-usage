@@ -212,7 +212,7 @@ table.cmdtable code{font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
 <tr>
 <td>Google AI Studio</td>
 <td>Cloud Code <code>loadCodeAssist</code> entitlement endpoint plus available-models/quota endpoint</td>
-<td><code>extra.plan_type</code>/<code>plan_label</code>/<code>plan_source</code> from <code>paidTier</code> or <code>currentTier</code>; <code>extra.models</code> model quota rows from <code>fetchAvailableModels</code>; cached token refreshes before expiry and once after auth/rate-limit endpoint failures</td>
+<td><code>extra.plan_type</code>/<code>plan_label</code>/<code>plan_source</code> from <code>paidTier</code> or <code>currentTier</code>; <code>extra.models</code> model quota rows from <code>fetchAvailableModels</code>; cached token refreshes before expiry and once after auth/rate-limit endpoint failures when local OAuth client metadata is available</td>
 </tr>
 </tbody>
 </table>
