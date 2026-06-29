@@ -18,7 +18,6 @@ Guidance for AI coding agents working in this repo. Keep changes surgical and ve
 | [`docs/architecture/adr/README.md`](docs/architecture/adr/README.md) | Architecture Decision Record index. |
 | [`ai-usage-high-level-doc.html`](ai-usage-high-level-doc.html) | Generated visual front door from `scripts/showcase.spec.json`. Do not hand-edit. |
 | [`README.html`](README.html), `docs/*.html` | Generated browser companions from Markdown. Do not hand-edit. |
-| [`architecture.html`](architecture.html) | Legacy root architecture render retained as a historical reference. |
 
 ## What this is
 

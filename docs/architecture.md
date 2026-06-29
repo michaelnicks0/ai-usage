@@ -7,13 +7,12 @@
 | Runtime entry point | `ai_usage.cli:main` / `ai-usage` |
 | Implementation root | `src/ai_usage/` |
 | Generated HTML companion | `docs/architecture.html` from `scripts/render_docs.py` |
-| Legacy root render | `architecture.html` |
 
 ## Scope
 
 `ai-usage` is a Python CLI that fetches account balance, spend, subscription quota, and token-usage data across provider APIs, normalizes those responses into `ProviderData`, stores snapshots in SQLite, renders table or JSON output, and exposes a small provider-auth refresh helper for Nous OAuth state.
 
-This document describes the current source-level architecture. Markdown/Mermaid is the canonical documentation source for this narrative; `docs/architecture.html` is the generated browser companion. The older root-level HTML renders are historical references. For C4 model-as-code topology and generated diagram artifacts, see [`docs/architecture/README.md`](architecture/README.md) and [`docs/architecture/workspace.dsl`](architecture/workspace.dsl).
+This document describes the current source-level architecture. Markdown/Mermaid is the canonical documentation source for this narrative; `docs/architecture.html` is the generated browser companion. For C4 model-as-code topology and generated diagram artifacts, see [`docs/architecture/README.md`](architecture/README.md) and [`docs/architecture/workspace.dsl`](architecture/workspace.dsl).
 
 ## Component model
 

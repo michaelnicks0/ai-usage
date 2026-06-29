@@ -95,5 +95,5 @@ Codex multi-account live fetches save history rows under provider keys such as `
 ## Documentation rules
 
 - Keep this Markdown document synchronized with provider endpoint and normalized-field changes.
-- Treat root-level `architecture.html` as a legacy rendered reference. Regenerate same-path `docs/*.html` companions from canonical Markdown with `scripts/render_docs.py`.
+- Regenerate same-path `docs/*.html` companions from canonical Markdown with `scripts/render_docs.py`.
 - Never document real credential values; use environment-variable names and `[REDACTED]` placeholders only.
